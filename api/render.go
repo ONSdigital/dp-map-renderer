@@ -7,9 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"errors"
 	"github.com/ONSdigital/dp-map-renderer/models"
-	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/renderer"
-	"strings"
 )
 
 // Error types
@@ -49,7 +47,7 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 
 	switch renderType {
 	case "html":
-		bytes, err = RenderHTML(renderRequest)
+		bytes, err = renderer.RenderHTML(renderRequest)
 		setContentType(w, contentHTML)
 	default:
 		log.Error(errors.New("Unknown render type"), log.Data{"render_type": renderType})
@@ -72,36 +70,6 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-
-
-
-func RenderHTML(renderRequest *models.RenderRequest) ([]byte, error) {
-
-	geoJSON := renderRequest.Geography.Topojson.ToGeoJSON()
-
-	svg := geojson2svg.New()
-	svg.AppendFeatureCollection(geoJSON)
-
-	width := renderRequest.Width
-	if width <=0 {
-		width = 400.0;
-	}
-
-	height := renderRequest.Height
-	if height <= 0 {
-		height = svg.GetHeightForWidth(width, geojson2svg.MercatorProjection)
-	}
-	output := svg.DrawWithProjection(width, height, geojson2svg.MercatorProjection)
-
-	figure, err := renderer.RenderHTML(renderRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	figure = strings.Replace(figure, renderer.SVG_REPLACEMENT_TEXT, output, 1)
-	return []byte(figure), nil;
-}
-
 
 func setContentType(w http.ResponseWriter, contentType string) {
 	w.Header().Set("Content-Type", contentType)

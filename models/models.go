@@ -28,7 +28,7 @@ type RenderRequest struct {
 	Footnotes  []string   `json:"footnotes,omitempty"`
 	MapType    string     `json:"map_type,omitempty"`
 	Geography  Geography  `json:"geography,omitempty"`
-	Data       Data       `json:"data,omitempty"`
+	Data       []DataRow  `json:"data,omitempty"`
 	Choropleth Choropleth `json:"choropleth,omitempty"`
 	Width      float64    `json:"width,omitempty"`
 	Height     float64    `json:"height,omitempty"`
@@ -41,20 +41,19 @@ type Geography struct {
 	NameProperty string            `json:"name_property,omitempty"`
 }
 
-// Data holds the csv data.
-type Data struct {
-	Values      [][]string `json:"values,omitempty"`       // should not include headers
-	IDColumn    int        `json:"id_column,omitempty"`    // zero-indexed
-	ValueColumn int        `json:"value_column,omitempty"` // zero-indexed
+// DataRow holds a single row of data.
+type DataRow struct {
+	ID    string  `json:"id,omitempty"`
+	value float64 `json:"value,omitempty"`
 }
 
 // Choropleth contains details required to create a choropleth
 type Choropleth struct {
-	ReferenceValue     float64         `json:"reference_value,omitempty"`
-	ReferenceValueText string          `json:"reference_value_text,omitempty"`
-	ValuePrefix        string          `json:"value_prefix,omitempty"`
-	ValueSuffix        string          `json:"value_suffix,omitempty"`
-	Breaks             ChoroplethBreak `json:"breaks,omitempty"`
+	ReferenceValue     float64           `json:"reference_value,omitempty"`
+	ReferenceValueText string            `json:"reference_value_text,omitempty"`
+	ValuePrefix        string            `json:"value_prefix,omitempty"`
+	ValueSuffix        string            `json:"value_suffix,omitempty"`
+	Breaks             []ChoroplethBreak `json:"breaks,omitempty"`
 }
 
 // ChoroplethBreak represents a single break - the point at which a colour changes
@@ -92,6 +91,7 @@ func (rr *RenderRequest) ValidateRenderRequest() error {
 
 	var missingFields []string
 
+	// TODO: make mandatory fields: width, geography.topojaon
 	if missingFields != nil {
 		return fmt.Errorf("Missing mandatory fields: %v", missingFields)
 	}

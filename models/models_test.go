@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/ONSdigital/dp-map-renderer/testdata"
+	"bytes"
 )
 
 // A Mock io.reader to trigger errors on reading
@@ -25,6 +27,19 @@ func TestCreateRenderRequestWithValidJSON(t *testing.T) {
 		So(request.ValidateRenderRequest(), ShouldBeNil)
 		So(request.Title, ShouldEqual, "map_title")
 		So(request.Filename, ShouldEqual, "filename")
+	})
+
+}
+
+func TestCreateRenderRequestFromFile(t *testing.T) {
+	Convey("When a render request is passed, a valid struct is returned", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		request, err := CreateRenderRequest(reader)
+
+		So(err, ShouldBeNil)
+		So(request.ValidateRenderRequest(), ShouldBeNil)
+		So(request.Title, ShouldEqual, "Non-UK born population, Great Britain, 2015")
+		So(request.Filename, ShouldEqual, "abcd1234")
 	})
 
 }
