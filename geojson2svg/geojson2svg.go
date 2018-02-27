@@ -86,16 +86,12 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 		case Geometry:
 			process(sf, content, e.geometry, "")
 		case Feature:
-			as := makeAttributesFromProperties(svg.useProp, e.feature.Properties)
+			as := getFeatureAttributes(svg.useProp, e.feature)
 			process(sf, content, e.feature.Geometry, as)
 		case FeatureCollection:
 			for _, f := range e.featureCollection.Features {
-				as := makeAttributesFromProperties(svg.useProp, f.Properties)
+				as := getFeatureAttributes(svg.useProp, f)
 				process(sf, content, f.Geometry, as)
-				//if val, ok := f.Properties["NAME"]; ok && len(f.Geometry.Point) > 0 {
-				//	x,y := sf(f.Geometry.Point[0], f.Geometry.Point[1])
-				//	fmt.Fprintf(content, `<text x="%f" y="%f" style="text-anchor:middle" transform="translate(0,-5)">%s</text>`, x, y, val)
-				//}
 			}
 		}
 	}
@@ -299,9 +295,13 @@ func makeAttributes(as map[string]string) string {
 	return res.String()
 }
 
-func makeAttributesFromProperties(useProp func(string) bool, props map[string]interface{}) string {
+func getFeatureAttributes(useProp func(string) bool, feature *geojson.Feature) string {
 	attrs := make(map[string]string)
-	for k, v := range props {
+	id, isString := feature.ID.(string)
+	if isString && len(id) > 0 {
+		attrs["id"] = id
+	}
+	for k, v := range feature.Properties {
 		if useProp(k) {
 			attrs[k] = fmt.Sprintf("%v", v)
 		}
