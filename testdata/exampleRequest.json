@@ -441,11 +441,11 @@
     "reference_value": 13,
     "reference_value_text": "UK",
     "breaks": [
-      {"value": 0, "color": "rgb(241, 238, 246)"},
-      {"value": 6, "color": "rgb(189, 201, 225)"},
-      {"value": 11, "color": "rgb(116, 169, 207)"},
-      {"value": 20, "color": "rgb(43, 140, 190)"},
-      {"value": 33, "color": "rgb(4, 90, 141))"}
+      {"lower_bound": 0, "color": "rgb(241, 238, 246)"},
+      {"lower_bound": 6, "color": "rgb(189, 201, 225)"},
+      {"lower_bound": 11, "color": "rgb(116, 169, 207)"},
+      {"lower_bound": 20, "color": "rgb(43, 140, 190)"},
+      {"lower_bound": 33, "color": "rgb(4, 90, 141))"}
     ],
     "value_prefix": "",
     "value_suffix": "% non-UK born"

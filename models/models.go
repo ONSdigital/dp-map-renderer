@@ -58,8 +58,8 @@ type Choropleth struct {
 
 // ChoroplethBreak represents a single break - the point at which a colour changes
 type ChoroplethBreak struct {
-	Value float64 `json:"value,omitempty"` // the lower bound for this colour
-	Color string  `json:"color,omitempty"`
+	LowerBound float64 `json:"lower_bound,omitempty"` // the lower bound for this colour
+	Color      string  `json:"color,omitempty"`
 }
 
 // CreateRenderRequest manages the creation of a RenderRequest from a reader
@@ -91,7 +91,7 @@ func (rr *RenderRequest) ValidateRenderRequest() error {
 
 	var missingFields []string
 
-	// TODO: make mandatory fields: width, geography.topojaon
+	// TODO: make mandatory fields: width, geography.topojson
 	if missingFields != nil {
 		return fmt.Errorf("Missing mandatory fields: %v", missingFields)
 	}

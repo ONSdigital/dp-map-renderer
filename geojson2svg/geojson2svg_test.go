@@ -28,7 +28,7 @@ func empty(t *testing.T) {
 	svg := geojson2svg.New()
 	got := svg.Draw(400, 400.45)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -44,7 +44,7 @@ func withAPoint(t *testing.T) {
 
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -59,8 +59,10 @@ func addGeometry(t *testing.T, svg *geojson2svg.SVG, s string) {
 func withAMultiPoint(t *testing.T) {
 	expected := oneLine(`
 		<svg width="400" height="400">
-			<circle cx="0.000000" cy="400.000000" r="1"/>
-			<circle cx="95.238095" cy="0.000000" r="1"/>
+			<g>
+				<circle cx="0.000000" cy="400.000000" r="1"/>
+				<circle cx="95.238095" cy="0.000000" r="1"/>
+			</g>
 		</svg>
 	`)
 
@@ -68,7 +70,7 @@ func withAMultiPoint(t *testing.T) {
 	addGeometry(t, svg, `{"type": "MultiPoint", "coordinates": [[10.5,20], [20.5,62]]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -83,15 +85,17 @@ func withALineString(t *testing.T) {
 	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
 func withAMultiLineString(t *testing.T) {
 	expected := oneLine(`
 		<svg width="400" height="400">
-			<path d="M0.000000 282.200647,387.055016 0.000000"/>
-			<path d="M12.944984 269.255663,400.000000 12.944984"/>
+			<g>
+				<path d="M0.000000 282.200647,387.055016 0.000000"/>
+				<path d="M12.944984 269.255663,400.000000 12.944984"/>
+			</g>
 		</svg>
 	`)
 
@@ -99,7 +103,7 @@ func withAMultiLineString(t *testing.T) {
 	addGeometry(t, svg, `{"type": "MultiLineString", "coordinates": [[[10.4,20.5], [40.3,42.3]], [[11.4,21.5], [41.3,41.3]]]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -114,7 +118,7 @@ func withAPolygonWithoutHoles(t *testing.T) {
 	addGeometry(t, svg, `{"type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -132,15 +136,17 @@ func withAPolygonWithHoles(t *testing.T) {
 	]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
 func withAMultiPolygon(t *testing.T) {
 	expected := oneLine(`
 		<svg width="400" height="400">
-			<path d="M0.000000 96.247241,132.008830 0.000000,43.267108 141.721854,0.000000 96.247241 Z"/>
-			<path d="M395.584989 186.754967,400.000000 186.754967,400.000000 182.339956,395.584989 182.339956,395.584989 186.754967 M396.467991 185.871965,399.116998 185.871965,399.116998 183.222958,396.467991 183.222958,396.467991 185.871965 Z"/>
+			<g>
+				<path d="M0.000000 96.247241,132.008830 0.000000,43.267108 141.721854,0.000000 96.247241 Z"/>
+				<path d="M395.584989 186.754967,400.000000 186.754967,400.000000 182.339956,395.584989 182.339956,395.584989 186.754967 M396.467991 185.871965,399.116998 185.871965,399.116998 183.222958,396.467991 183.222958,396.467991 185.871965 Z"/>
+			</g>
 		</svg>
 	`)
 
@@ -155,15 +161,17 @@ func withAMultiPolygon(t *testing.T) {
 	]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
 func withAGeometryCollection(t *testing.T) {
 	expected := oneLine(`
 		<svg width="400" height="400">
-			<path d="M0.000000 291.638796,400.000000 0.000000"/>
-			<circle cx="1.337793" cy="298.327759" r="1"/>
+			<g>
+				<path d="M0.000000 291.638796,400.000000 0.000000"/>
+				<circle cx="1.337793" cy="298.327759" r="1"/>
+			</g>
 		</svg>
 	`)
 
@@ -174,7 +182,7 @@ func withAGeometryCollection(t *testing.T) {
 	]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -191,7 +199,7 @@ func withMultipleGeometries(t *testing.T) {
 	addGeometry(t, svg, `{"type": "Point", "coordinates": [10.5,20]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -210,7 +218,7 @@ func withAFeature(t *testing.T) {
 	}}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -243,7 +251,7 @@ func withAFeatureCollection(t *testing.T) {
 	]}`)
 	got := svg.Draw(400, 400)
 	if got != expected {
-		t.Errorf("expected %s, got %s", expected, got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", expected, got)
 	}
 }
 
@@ -377,7 +385,7 @@ func TestSVGPaddingOption(t *testing.T) {
 			padding := geojson2svg.WithPadding(tc.padding)
 			got := svg.Draw(200, 200, padding)
 			if got != tc.expected {
-				t.Errorf("expected %s, got %s", tc.expected, got)
+				t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", tc.expected, got)
 			}
 		})
 	}
@@ -478,7 +486,7 @@ func TestFeatureProperties(t *testing.T) {
 				got = svg.Draw(400, 400)
 			}
 			if got != tc.expected {
-				tt.Errorf("expected \n\t%s, got \n\t%s", tc.expected, got)
+				tt.Errorf("\nexpected \n\t%s,\ngot \n\t%s", tc.expected, got)
 			}
 		})
 	}
@@ -509,7 +517,8 @@ func TestExample(t *testing.T) {
 			Bottom: 10,
 			Left:   10,
 		}))
+	//ioutil.WriteFile("testdata/example.svg", []byte(got), 0644)
 	if got != string(want) {
-		t.Errorf("expected %s, got %s", string(want), got)
+		t.Errorf("\nexpected \n\t%s,\ngot \n\t%s", string(want), got)
 	}
 }

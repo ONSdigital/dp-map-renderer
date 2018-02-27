@@ -191,9 +191,11 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string) 
 	case g.IsMultiPolygon():
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes)
 	case g.IsCollection():
+		fmt.Fprintf(w, `<g%s>`, attributes)
 		for _, x := range g.Geometries {
-			process(sf, w, x, attributes)
+			process(sf, w, x, "")
 		}
+		fmt.Fprintf(w, `</g>`)
 	}
 }
 
@@ -233,9 +235,11 @@ func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string) {
 }
 
 func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	for _, p := range ps {
-		drawPoint(sf, w, p, attributes)
+		drawPoint(sf, w, p, "")
 	}
+	fmt.Fprintf(w, `</g>`)
 }
 
 func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
@@ -248,9 +252,11 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	for _, ps := range pps {
-		drawLineString(sf, w, ps, attributes)
+		drawLineString(sf, w, ps, "")
 	}
+	fmt.Fprintf(w, `</g>`)
 }
 
 func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
@@ -265,17 +271,14 @@ func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string
 	}
 	pathString := trim(path)
 	fmt.Fprintf(w, `<path d="%s Z"%s/>`, pathString, attributes)
-	// draw a circle at the centroid
-	//centroid := Centroid(sf, pps)
-	//x, y := centroid[0], centroid[1]
-	//fmt.Fprintf(w, `<circle cx="%f" cy="%f" r="5" style="fill:red;"%s/>`, x, y, " ")
-
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string) {
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	for _, pps := range ppps {
-		drawPolygon(sf, w, pps, attributes)
+		drawPolygon(sf, w, pps, "")
 	}
+	fmt.Fprintf(w, `</g>`)
 }
 
 func trim(s fmt.Stringer) string {
