@@ -29,3 +29,5 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details.
 Copyright © 2018, Office for National Statistics (https://www.ons.gov.uk)
 
 Released under MIT license, see [LICENSE](LICENSE.md) for details.
+
+Some of the transformation of geojson to svg is based on original work by Fabian Prein: [geojson2svg](https://github.com/fapian/geojson2svg)

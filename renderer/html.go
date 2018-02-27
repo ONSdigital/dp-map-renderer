@@ -13,7 +13,6 @@ import (
 	"github.com/ONSdigital/go-ns/log"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
 
 const SVG_REPLACEMENT_TEXT = "[SVG Here]"
@@ -41,7 +40,7 @@ func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 	html.Render(&buf, figure)
 	buf.WriteString("\n")
 
-	result := strings.Replace(buf.String(), SVG_REPLACEMENT_TEXT, generateSVG(request), 1)
+	result := strings.Replace(buf.String(), SVG_REPLACEMENT_TEXT, RenderSVG(request), 1)
 
 	return []byte(result), nil
 }
@@ -70,24 +69,6 @@ func createFigure(request *models.RenderRequest) *html.Node {
 		figure.AppendChild(h.Text("\n"))
 	}
 	return figure
-}
-
-func generateSVG(request *models.RenderRequest) string {
-	geoJSON := request.Geography.Topojson.ToGeoJSON()
-
-	svg := geojson2svg.New()
-	svg.AppendFeatureCollection(geoJSON)
-
-	width := request.Width
-	if width <=0 {
-		width = 400.0;
-	}
-
-	height := request.Height
-	if height <= 0 {
-		height = svg.GetHeightForWidth(width, geojson2svg.MercatorProjection)
-	}
-	return svg.DrawWithProjection(width, height, geojson2svg.MercatorProjection)
 }
 
 // mapID returns the id for the map, as used in links etc

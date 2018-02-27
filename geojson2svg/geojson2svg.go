@@ -16,13 +16,19 @@ import (
 	"github.com/paulmach/go.geojson"
 )
 
-// TODO release
+type ElementType int
+
+const (
+	Geometry          ElementType = iota
+	Feature           ElementType = iota
+	FeatureCollection ElementType = iota
+)
 
 // ScaleFunc accepts x,y coordinates and transforms them, returning a new pair of x,y coordinates.
 type ScaleFunc func(float64, float64) (float64, float64)
 
 // SVG represents the SVG that should be created.
-// Use the New function to create a SVG. New will handle the defaualt values.
+// Use the New function to create a SVG. New will handle the default values.
 //
 // default padding (top: 0, right: 0, bottom: 0, left: 0)
 //
@@ -33,9 +39,15 @@ type SVG struct {
 	useProp            func(string) bool
 	padding            Padding
 	attributes         map[string]string
-	geometries         []*geojson.Geometry
-	features           []*geojson.Feature
-	featureCollections []*geojson.FeatureCollection
+	elements           []*SVGElement
+}
+
+// SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
+type SVGElement struct {
+	geometry          *geojson.Geometry
+	feature           *geojson.Feature
+	featureCollection *geojson.FeatureCollection
+	elementType       ElementType
 }
 
 // Padding represents the possible padding of the SVG.
@@ -69,72 +81,42 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	sf := makeScaleFunc(width, height, svg.padding, svg.points(), projection)
 
 	content := bytes.NewBufferString("")
-	for _, g := range svg.geometries {
-		process(sf, content, g, "")
-	}
-	for _, f := range svg.features {
-		as := makeAttributesFromProperties(svg.useProp, f.Properties)
-		process(sf, content, f.Geometry, as)
-
-	}
-	for _, fc := range svg.featureCollections {
-		for _, f := range fc.Features {
-			as := makeAttributesFromProperties(svg.useProp, f.Properties)
-			process(sf, content, f.Geometry, as)
-			//if val, ok := f.Properties["NAME"]; ok && len(f.Geometry.Point) > 0 {
-			//	x,y := sf(f.Geometry.Point[0], f.Geometry.Point[1])
-			//	fmt.Fprintf(content, `<text x="%f" y="%f" style="text-anchor:middle" transform="translate(0,-5)">%s</text>`, x, y, val)
-			//}
+	for _, e := range svg.elements {
+		switch e.elementType {
+		case Geometry:
+			process(sf, content, e.geometry, "")
+		case Feature:
+			as := makeAttributesFromProperties(svg.useProp, e.feature.Properties)
+			process(sf, content, e.feature.Geometry, as)
+		case FeatureCollection:
+			for _, f := range e.featureCollection.Features {
+				as := makeAttributesFromProperties(svg.useProp, f.Properties)
+				process(sf, content, f.Geometry, as)
+				//if val, ok := f.Properties["NAME"]; ok && len(f.Geometry.Point) > 0 {
+				//	x,y := sf(f.Geometry.Point[0], f.Geometry.Point[1])
+				//	fmt.Fprintf(content, `<text x="%f" y="%f" style="text-anchor:middle" transform="translate(0,-5)">%s</text>`, x, y, val)
+				//}
+			}
 		}
 	}
 
 	attributes := makeAttributes(svg.attributes)
-	return fmt.Sprintf(`<svg width="%f" height="%f"%s>%s</svg>`, width, height, attributes, content)
-}
-
-// AddGeometry adds a geojson geometry to the svg.
-func (svg *SVG) AddGeometry(gs string) error {
-	g, err := geojson.UnmarshalGeometry([]byte(gs))
-	if err != nil {
-		return fmt.Errorf("invalid geometry: %s", gs)
-	}
-	svg.AppendGeometry(g)
-	return nil
+	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s</svg>`, width, height, attributes, content)
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
-func (svg *SVG) AppendGeometry(f *geojson.Geometry) {
-	svg.geometries = append(svg.geometries, f)
-}
-
-// AddFeature adds a geojson feature to the svg.
-func (svg *SVG) AddFeature(fs string) error {
-	f, err := geojson.UnmarshalFeature([]byte(fs))
-	if err != nil {
-		return fmt.Errorf("invalid feature: %s", fs)
-	}
-	svg.AppendFeature(f)
-	return nil
+func (svg *SVG) AppendGeometry(g *geojson.Geometry) {
+	svg.elements = append(svg.elements, &SVGElement{geometry: g, elementType:Geometry})
 }
 
 // AppendFeature adds a geojson Feature to the svg.
 func (svg *SVG) AppendFeature(f *geojson.Feature) {
-	svg.features = append(svg.features, f)
-}
-
-// AddFeatureCollection adds a geojson featurecollection to the svg.
-func (svg *SVG) AddFeatureCollection(fcs string) error {
-	fc, err := geojson.UnmarshalFeatureCollection([]byte(fcs))
-	if err != nil {
-		return fmt.Errorf("invalid feature collection: %s", fcs)
-	}
-	svg.AppendFeatureCollection(fc)
-	return nil
+	svg.elements = append(svg.elements, &SVGElement{feature:f, elementType:Feature})
 }
 
 // AppendFeatureCollection adds a geojson FeatureCollection to the svg.
 func (svg *SVG) AppendFeatureCollection(fc *geojson.FeatureCollection) {
-	svg.featureCollections = append(svg.featureCollections, fc)
+	svg.elements = append(svg.elements, &SVGElement{featureCollection:fc, elementType:FeatureCollection})
 }
 
 // WithAttribute adds the key value pair as attribute to the
@@ -179,15 +161,16 @@ func UseProperties(props []string) Option {
 
 func (svg *SVG) points() [][]float64 {
 	ps := [][]float64{}
-	for _, g := range svg.geometries {
-		ps = append(ps, collect(g)...)
-	}
-	for _, f := range svg.features {
-		ps = append(ps, collect(f.Geometry)...)
-	}
-	for _, fs := range svg.featureCollections {
-		for _, f := range fs.Features {
-			ps = append(ps, collect(f.Geometry)...)
+	for _, e := range svg.elements {
+		switch e.elementType {
+		case Geometry:
+			ps = append(ps, collect(e.geometry)...)
+		case Feature:
+			ps = append(ps, collect(e.feature.Geometry)...)
+		case FeatureCollection:
+			for _, f := range e.featureCollection.Features {
+				ps = append(ps, collect(f.Geometry)...)
+			}
 		}
 	}
 	return ps
