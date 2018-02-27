@@ -97,7 +97,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	}
 
 	attributes := makeAttributes(svg.attributes)
-	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s</svg>`, width, height, attributes, content)
+	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s%s</svg>`, width, height, attributes, content, "\n")
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -187,11 +187,11 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string) 
 	case g.IsMultiPolygon():
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes)
 	case g.IsCollection():
-		fmt.Fprintf(w, `<g%s>`, attributes)
+		fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
 		for _, x := range g.Geometries {
 			process(sf, w, x, "")
 		}
-		fmt.Fprintf(w, `</g>`)
+		fmt.Fprintf(w, `%s</g>`, "\n")
 	}
 }
 
@@ -227,15 +227,15 @@ func collect(g *geojson.Geometry) (ps [][]float64) {
 
 func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string) {
 	x, y := sf(p[0], p[1])
-	fmt.Fprintf(w, `<circle cx="%f" cy="%f" r="1"%s/>`, x, y, attributes)
+	fmt.Fprintf(w, `%s<circle cx="%f" cy="%f" r="1"%s/>`, "\n", x, y, attributes)
 }
 
 func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
-	fmt.Fprintf(w, `<g%s>`, attributes)
+	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
 	for _, p := range ps {
 		drawPoint(sf, w, p, "")
 	}
-	fmt.Fprintf(w, `</g>`)
+	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
@@ -244,15 +244,15 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 		x, y := sf(p[0], p[1])
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
-	fmt.Fprintf(w, `<path d="%s"%s/>`, trim(path), attributes)
+	fmt.Fprintf(w, `%s<path d="%s"%s/>`, "\n", trim(path), attributes)
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
-	fmt.Fprintf(w, `<g%s>`, attributes)
+	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
 	for _, ps := range pps {
 		drawLineString(sf, w, ps, "")
 	}
-	fmt.Fprintf(w, `</g>`)
+	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
@@ -266,15 +266,15 @@ func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string
 		fmt.Fprintf(path, " %s", trim(subPath))
 	}
 	pathString := trim(path)
-	fmt.Fprintf(w, `<path d="%s Z"%s/>`, pathString, attributes)
+	fmt.Fprintf(w, `%s<path d="%s Z"%s/>`, "\n", pathString, attributes)
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string) {
-	fmt.Fprintf(w, `<g%s>`, attributes)
+	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
 	for _, pps := range ppps {
 		drawPolygon(sf, w, pps, "")
 	}
-	fmt.Fprintf(w, `</g>`)
+	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func trim(s fmt.Stringer) string {

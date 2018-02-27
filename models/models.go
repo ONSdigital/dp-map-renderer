@@ -47,13 +47,14 @@ type DataRow struct {
 	value float64 `json:"value,omitempty"`
 }
 
-// Choropleth contains details required to create a choropleth
+// Choropleth contains details required to create a choropleth map
 type Choropleth struct {
 	ReferenceValue     float64           `json:"reference_value,omitempty"`
 	ReferenceValueText string            `json:"reference_value_text,omitempty"`
 	ValuePrefix        string            `json:"value_prefix,omitempty"`
 	ValueSuffix        string            `json:"value_suffix,omitempty"`
 	Breaks             []ChoroplethBreak `json:"breaks,omitempty"`
+	MissingValueColor  string            `json:"missing_value_color,omitempty"`
 }
 
 // ChoroplethBreak represents a single break - the point at which a colour changes
