@@ -12,6 +12,8 @@ import (
 	"github.com/paulmach/go.geojson"
 )
 
+// TODO: Convert tests to use Convey
+
 func trimSpace(s string) string {
 	res := bytes.NewBufferString("")
 	for _, l := range strings.Split(s, "\n") {

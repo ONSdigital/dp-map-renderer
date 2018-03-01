@@ -24,6 +24,8 @@ const (
 	FeatureCollection ElementType = iota
 )
 
+const newline = "\n"
+
 // ScaleFunc accepts x,y coordinates and transforms them, returning a new pair of x,y coordinates.
 type ScaleFunc func(float64, float64) (float64, float64)
 
@@ -36,10 +38,11 @@ type ScaleFunc func(float64, float64) (float64, float64)
 //
 // default attributes ()
 type SVG struct {
-	useProp            func(string) bool
-	padding            Padding
-	attributes         map[string]string
-	elements           []*SVGElement
+	useProp    func(string) bool
+	padding    Padding
+	attributes map[string]string
+	elements   []*SVGElement
+	titleProp  string
 }
 
 // SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
@@ -61,6 +64,7 @@ type Option func(*SVG)
 func New() *SVG {
 	return &SVG{
 		useProp:    func(prop string) bool { return prop == "class" },
+		titleProp:  "",
 		attributes: make(map[string]string),
 	}
 }
@@ -84,20 +88,20 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	for _, e := range svg.elements {
 		switch e.elementType {
 		case Geometry:
-			process(sf, content, e.geometry, "")
+			process(sf, content, e.geometry, "", "")
 		case Feature:
-			as := getFeatureAttributes(svg.useProp, e.feature)
-			process(sf, content, e.feature.Geometry, as)
+			as, title := getFeatureAttributesAndTitle(svg.useProp, svg.titleProp, e.feature)
+			process(sf, content, e.feature.Geometry, as, title)
 		case FeatureCollection:
 			for _, f := range e.featureCollection.Features {
-				as := getFeatureAttributes(svg.useProp, f)
-				process(sf, content, f.Geometry, as)
+				as, title := getFeatureAttributesAndTitle(svg.useProp, svg.titleProp, f)
+				process(sf, content, f.Geometry, as, title)
 			}
 		}
 	}
 
 	attributes := makeAttributes(svg.attributes)
-	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s%s</svg>`, width, height, attributes, content, "\n")
+	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s%s</svg>`, width, height, attributes, content, newline)
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -140,6 +144,13 @@ func WithPadding(p Padding) Option {
 	}
 }
 
+// WithTitles configures the SVG to include a title element for each feature with the given property.
+func WithTitles(titleProperty string) Option {
+	return func(svg *SVG) {
+		svg.titleProp = titleProperty
+	}
+}
+
 // UseProperties configures which geojson properties should be copied to the
 // resulting SVG element.
 func UseProperties(props []string) Option {
@@ -172,26 +183,26 @@ func (svg *SVG) points() [][]float64 {
 	return ps
 }
 
-func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string) {
+func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, title string) {
 	switch {
 	case g.IsPoint():
-		drawPoint(sf, w, g.Point, attributes)
+		drawPoint(sf, w, g.Point, attributes, title)
 	case g.IsMultiPoint():
-		drawMultiPoint(sf, w, g.MultiPoint, attributes)
+		drawMultiPoint(sf, w, g.MultiPoint, attributes, title)
 	case g.IsLineString():
-		drawLineString(sf, w, g.LineString, attributes)
+		drawLineString(sf, w, g.LineString, attributes, title)
 	case g.IsMultiLineString():
-		drawMultiLineString(sf, w, g.MultiLineString, attributes)
+		drawMultiLineString(sf, w, g.MultiLineString, attributes, title)
 	case g.IsPolygon():
-		drawPolygon(sf, w, g.Polygon, attributes)
+		drawPolygon(sf, w, g.Polygon, attributes, title)
 	case g.IsMultiPolygon():
-		drawMultiPolygon(sf, w, g.MultiPolygon, attributes)
+		drawMultiPolygon(sf, w, g.MultiPolygon, attributes, title)
 	case g.IsCollection():
-		fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
+		fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
 		for _, x := range g.Geometries {
-			process(sf, w, x, "")
+			process(sf, w, x, "", "")
 		}
-		fmt.Fprintf(w, `%s</g>`, "\n")
+		fmt.Fprintf(w, `%s</g>`, newline)
 	}
 }
 
@@ -225,37 +236,45 @@ func collect(g *geojson.Geometry) (ps [][]float64) {
 	return ps
 }
 
-func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string) {
+func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string, title string) {
 	x, y := sf(p[0], p[1])
-	fmt.Fprintf(w, `%s<circle cx="%f" cy="%f" r="1"%s/>`, "\n", x, y, attributes)
+	endTag := endTag("circle", title)
+	fmt.Fprintf(w, `%s<circle cx="%f" cy="%f" r="1"%s%s`, newline, x, y, attributes, endTag)
 }
 
-func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
-	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
-	for _, p := range ps {
-		drawPoint(sf, w, p, "")
+func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
+	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	if len(title) > 0 {
+		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
 	}
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	for _, p := range ps {
+		drawPoint(sf, w, p, "", "")
+	}
+	fmt.Fprintf(w, `%s</g>`, newline)
 }
 
-func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string) {
+func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
 	path := bytes.NewBufferString("M")
 	for _, p := range ps {
 		x, y := sf(p[0], p[1])
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
-	fmt.Fprintf(w, `%s<path d="%s"%s/>`, "\n", trim(path), attributes)
+	endTag := endTag("path", title)
+	fmt.Fprintf(w, `%s<path d="%s"%s%s`, newline, trim(path), attributes, endTag)
 }
 
-func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
-	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
-	for _, ps := range pps {
-		drawLineString(sf, w, ps, "")
+func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
+	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	if len(title) > 0 {
+		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
 	}
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	for _, ps := range pps {
+		drawLineString(sf, w, ps, "", "")
+	}
+	fmt.Fprintf(w, `%s</g>`, newline)
 }
 
-func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string) {
+func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
 	path := bytes.NewBufferString("")
 	for _, ps := range pps {
 		subPath := bytes.NewBufferString("M")
@@ -266,15 +285,19 @@ func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string
 		fmt.Fprintf(path, " %s", trim(subPath))
 	}
 	pathString := trim(path)
-	fmt.Fprintf(w, `%s<path d="%s Z"%s/>`, "\n", pathString, attributes)
+	endTag := endTag("path", title)
+	fmt.Fprintf(w, `%s<path d="%s Z"%s%s`, newline, pathString, attributes, endTag)
 }
 
-func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string) {
-	fmt.Fprintf(w, `%s<g%s>`, "\n", attributes)
-	for _, pps := range ppps {
-		drawPolygon(sf, w, pps, "")
+func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
+	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	if len(title) > 0 {
+		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
 	}
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	for _, pps := range ppps {
+		drawPolygon(sf, w, pps, "", "")
+	}
+	fmt.Fprintf(w, `%s</g>`, newline)
 }
 
 func trim(s fmt.Stringer) string {
@@ -282,6 +305,34 @@ func trim(s fmt.Stringer) string {
 	return string(re.ReplaceAll([]byte(strings.TrimSpace(s.String())), []byte("")))
 }
 
+// endTag creates an end tag string, "/>" if title is empty, "><title>title</title></tag>" otherwise.
+func endTag(tag string, title string) string {
+	if len(title) > 0 {
+		return fmt.Sprintf("><title>%s</title></%s>", title, tag)
+	}
+	return "/>"
+}
+
+// getFeatureAttributesAndTitle converts the proeprties of the feature into a string of attributes, and extracts the title property into a string
+func getFeatureAttributesAndTitle(useProp func(string) bool, titleProp string, feature *geojson.Feature) (string, string) {
+	attrs := make(map[string]string)
+	id, isString := feature.ID.(string)
+	if isString && len(id) > 0 {
+		attrs["id"] = id
+	}
+	for k, v := range feature.Properties {
+		if useProp(k) {
+			attrs[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	titleString := ""
+	if title, ok := feature.Properties[titleProp]; ok {
+		titleString = fmt.Sprintf("%v", title)
+	}
+	return makeAttributes(attrs), titleString
+}
+
+// makeAttributes converts the given map into a string with each key="value" pair in sorted order
 func makeAttributes(as map[string]string) string {
 	keys := make([]string, 0, len(as))
 	for k := range as {
@@ -295,20 +346,8 @@ func makeAttributes(as map[string]string) string {
 	return res.String()
 }
 
-func getFeatureAttributes(useProp func(string) bool, feature *geojson.Feature) string {
-	attrs := make(map[string]string)
-	id, isString := feature.ID.(string)
-	if isString && len(id) > 0 {
-		attrs["id"] = id
-	}
-	for k, v := range feature.Properties {
-		if useProp(k) {
-			attrs[k] = fmt.Sprintf("%v", v)
-		}
-	}
-	return makeAttributes(attrs)
-}
-
+// makeScaleFunc creates a function that will scale a pair of coordinates so that they fit within the width and height,
+// passing them through the projection first.
 func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, projection ScaleFunc) ScaleFunc {
 	w := width - padding.Left - padding.Right
 	h := height - padding.Top - padding.Bottom

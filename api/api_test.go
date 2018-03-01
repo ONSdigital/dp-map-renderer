@@ -43,8 +43,7 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 }
 
 func TestSuccessfullyRenderEmptyMap(t *testing.T) {
-	t.Parallel()
-	Convey("Successfully render an html map", t, func() {
+	Convey("Successfully render html without an svg", t, func() {
 		reader := strings.NewReader(requestBody)
 		r, err := http.NewRequest("POST", requestHTMLURL, reader)
 		So(err, ShouldBeNil)
@@ -54,7 +53,7 @@ func TestSuccessfullyRenderEmptyMap(t *testing.T) {
 		api.router.ServeHTTP(w, r)
 		So(w.Code, ShouldEqual, http.StatusOK)
 		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
-		So(w.Body.String(), ShouldContainSubstring, "<svg")
+		So(w.Body.String(), ShouldNotContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "map_title")
 	})
 }

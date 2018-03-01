@@ -20,25 +20,25 @@ var (
 
 // RenderRequest represents a structure for a map render job
 type RenderRequest struct {
-	Title      string     `json:"title,omitempty"`
-	Subtitle   string     `json:"subtitle,omitempty"`
-	Source     string     `json:"source,omitempty"`
-	SourceLink string     `json:"source_link,omitempty"`
-	Filename   string     `json:"filename,omitempty"`
-	Footnotes  []string   `json:"footnotes,omitempty"`
-	MapType    string     `json:"map_type,omitempty"`
-	Geography  Geography  `json:"geography,omitempty"`
-	Data       []DataRow  `json:"data,omitempty"`
-	Choropleth Choropleth `json:"choropleth,omitempty"`
-	Width      float64    `json:"width,omitempty"`
-	Height     float64    `json:"height,omitempty"`
+	Title      string      `json:"title,omitempty"`
+	Subtitle   string      `json:"subtitle,omitempty"`
+	Source     string      `json:"source,omitempty"`
+	SourceLink string      `json:"source_link,omitempty"`
+	Filename   string      `json:"filename,omitempty"`
+	Footnotes  []string    `json:"footnotes,omitempty"`
+	MapType    string      `json:"map_type,omitempty"`
+	Geography  *Geography  `json:"geography,omitempty"`
+	Data       []*DataRow  `json:"data,omitempty"`
+	Choropleth *Choropleth `json:"choropleth,omitempty"`
+	Width      float64     `json:"width,omitempty"`
+	Height     float64     `json:"height,omitempty"`
 }
 
 // Geography holds the topojson topology and supporting information
 type Geography struct {
-	Topojson     topojson.Topology `json:"topojson,omitempty"`
-	IDProperty   string            `json:"id_property,omitempty"`
-	NameProperty string            `json:"name_property,omitempty"`
+	Topojson     *topojson.Topology `json:"topojson,omitempty"`
+	IDProperty   string             `json:"id_property,omitempty"`
+	NameProperty string             `json:"name_property,omitempty"`
 }
 
 // DataRow holds a single row of data.
@@ -49,12 +49,12 @@ type DataRow struct {
 
 // Choropleth contains details required to create a choropleth map
 type Choropleth struct {
-	ReferenceValue     float64           `json:"reference_value,omitempty"`
-	ReferenceValueText string            `json:"reference_value_text,omitempty"`
-	ValuePrefix        string            `json:"value_prefix,omitempty"`
-	ValueSuffix        string            `json:"value_suffix,omitempty"`
-	Breaks             []ChoroplethBreak `json:"breaks,omitempty"`
-	MissingValueColor  string            `json:"missing_value_color,omitempty"`
+	ReferenceValue     float64            `json:"reference_value,omitempty"`
+	ReferenceValueText string             `json:"reference_value_text,omitempty"`
+	ValuePrefix        string             `json:"value_prefix,omitempty"`
+	ValueSuffix        string             `json:"value_suffix,omitempty"`
+	Breaks             []*ChoroplethBreak `json:"breaks,omitempty"`
+	MissingValueColor  string             `json:"missing_value_color,omitempty"`
 }
 
 // ChoroplethBreak represents a single break - the point at which a colour changes

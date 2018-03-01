@@ -47,6 +47,36 @@ func TestRenderHTML(t *testing.T) {
 	})
 }
 
+func TestRenderHTMLWithNoSVG(t *testing.T) {
+
+	Convey("Successfully render an html response when no geography provided", t, func() {
+		renderRequest := &models.RenderRequest{
+			Filename:"testname",
+			Source: "source text",
+			Footnotes: []string{"Note1", "Note2"},
+		}
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+
+		// the footer - source
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		// source
+		source := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__source"})
+		So(source, ShouldNotBeNil)
+		// footnotes
+		notes := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__notes"})
+		So(notes, ShouldNotBeNil)
+		So(notes.FirstChild.Data, ShouldResemble, "Notes")
+		footnotes := FindNodes(footer, atom.Li)
+		So(len(footnotes), ShouldEqual, len(renderRequest.Footnotes))
+
+	})
+}
+
 func TestRenderHTML_Source(t *testing.T) {
 
 	Convey("A renderRequest without a source should not have a source paragraph", t, func() {
