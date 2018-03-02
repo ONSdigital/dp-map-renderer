@@ -14,7 +14,6 @@ import (
 // A list of errors returned from package
 var (
 	ErrorReadingBody = errors.New("Failed to read message body")
-	ErrorParsingBody = errors.New("Failed to parse json body")
 	ErrorNoData      = errors.New("Bad request - Missing data in body")
 )
 
@@ -44,7 +43,7 @@ type Geography struct {
 // DataRow holds a single row of data.
 type DataRow struct {
 	ID    string  `json:"id,omitempty"`
-	value float64 `json:"value,omitempty"`
+	Value float64 `json:"value,omitempty"`
 }
 
 // Choropleth contains details required to create a choropleth map
@@ -76,7 +75,7 @@ func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
 	err = json.Unmarshal(bytes, &request)
 	if err != nil {
 		log.Error(err, log.Data{"request_body": string(bytes)})
-		return nil, ErrorParsingBody
+		return nil, err
 	}
 
 	// This should be the last check before returning RenderRequest
