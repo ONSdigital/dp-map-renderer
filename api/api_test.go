@@ -133,7 +133,8 @@ function toggleLegend() {
 }
 </script>
 <p>This page has additional styling to set the background colour of the svg, highlight region borders on hover,
-	<br/>and position the legend(s). There's also javascript to toggle between the 2 legends (horizontal and vertical.)
+	<br/>and position the legend(s). There's also javascript to toggle between the 2 legends (horizontal and vertical)
+	- the same can be achieved with css alone using min-width and max-width selectors.
 </p>
 <button onclick="toggleLegend()">Toggle legend position</button>
 `

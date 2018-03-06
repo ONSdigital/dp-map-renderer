@@ -17,6 +17,12 @@ var (
 	ErrorNoData      = errors.New("Bad request - Missing data in body")
 )
 
+// possible values for the 2 LegendPositions. 'None' is the default.
+var (
+	LegendPositionBefore = "before"
+	LegendPositionAfter = "after"
+)
+
 // RenderRequest represents a structure for a map render job
 type RenderRequest struct {
 	Title      string      `json:"title,omitempty"`
@@ -48,12 +54,14 @@ type DataRow struct {
 
 // Choropleth contains details required to create a choropleth map
 type Choropleth struct {
-	ReferenceValue     float64            `json:"reference_value,omitempty"`
-	ReferenceValueText string             `json:"reference_value_text,omitempty"`
-	ValuePrefix        string             `json:"value_prefix,omitempty"`
-	ValueSuffix        string             `json:"value_suffix,omitempty"`
-	Breaks             []*ChoroplethBreak `json:"breaks,omitempty"`
-	MissingValueColor  string             `json:"missing_value_color,omitempty"`
+	ReferenceValue           float64            `json:"reference_value,omitempty"`
+	ReferenceValueText       string             `json:"reference_value_text,omitempty"`
+	ValuePrefix              string             `json:"value_prefix,omitempty"`
+	ValueSuffix              string             `json:"value_suffix,omitempty"`
+	Breaks                   []*ChoroplethBreak `json:"breaks,omitempty"`
+	MissingValueColor        string             `json:"missing_value_color,omitempty"`
+	HorizontalLegendPosition string             `json:"horizontal_legend_position, omitempty"` // before, after or none (the default)
+	VerticalLegendPosition   string             `json:"vertical_legend_position, omitempty"`   // before, after or none (the default)
 }
 
 // ChoroplethBreak represents a single break - the point at which a colour changes
@@ -91,7 +99,6 @@ func (rr *RenderRequest) ValidateRenderRequest() error {
 
 	var missingFields []string
 
-	// TODO: make mandatory fields: width, geography.topojson
 	if missingFields != nil {
 		return fmt.Errorf("Missing mandatory fields: %v", missingFields)
 	}

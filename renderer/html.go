@@ -41,9 +41,8 @@ func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 
 	svgContainer := h.CreateNode("div", atom.Div, h.Attr("class", "map_container"))
 	figure.AppendChild(svgContainer)
-	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), SVG_REPLACEMENT_TEXT))
-	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
-	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
+
+	addSVGDivs(request, svgContainer)
 
 	addFooter(request, figure)
 
@@ -51,9 +50,7 @@ func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 	html.Render(&buf, figure)
 	buf.WriteString("\n")
 
-	result := strings.Replace(buf.String(), SVG_REPLACEMENT_TEXT, RenderSVG(request), 1)
-	result = strings.Replace(result, VERTICAL_KEY_REPLACEMENT_TEXT, RenderVerticalKey(request), 1)
-	result = strings.Replace(result, HORIZONTAL_KEY_REPLACEMENT_TEXT, RenderHorizontalKey(request), 1)
+	result := renderSVGs(request, buf.String())
 
 	return []byte(result), nil
 }
@@ -87,6 +84,29 @@ func createFigure(request *models.RenderRequest) *html.Node {
 // mapID returns the id for the map, as used in links etc
 func mapID(request *models.RenderRequest) string {
 	return "map-" + request.Filename
+}
+
+// addSVGDivs adds divs with marker text for each of the horizontal & vertical legends, and the map
+func addSVGDivs(request *models.RenderRequest, parent *html.Node) {
+	if request.Choropleth == nil {
+		return
+	}
+
+	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore {
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
+	}
+	if request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore {
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
+	}
+
+	parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), SVG_REPLACEMENT_TEXT))
+
+	if request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter {
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
+	}
+	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter {
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
+	}
 }
 
 // addFooter adds a footer to the given element, containing the source and footnotes
@@ -135,6 +155,18 @@ func addFooterItemsToList(request *models.RenderRequest, ol *html.Node) {
 		ol.AppendChild(li)
 		ol.AppendChild(h.Text("\n"))
 	}
+}
+
+// renderSVGs replaces the SVG marker text with the actual SVG(s)
+func renderSVGs(request *models.RenderRequest, original string) string {
+	result := strings.Replace(original, SVG_REPLACEMENT_TEXT, RenderSVG(request), 1)
+	if strings.Contains(result, VERTICAL_KEY_REPLACEMENT_TEXT) {
+		result = strings.Replace(result, VERTICAL_KEY_REPLACEMENT_TEXT, RenderVerticalKey(request), 1)
+	}
+	if strings.Contains(result, HORIZONTAL_KEY_REPLACEMENT_TEXT) {
+		result = strings.Replace(result, HORIZONTAL_KEY_REPLACEMENT_TEXT, RenderHorizontalKey(request), 1)
+	}
+	return result
 }
 
 // Parses the string to replace \n with <br /> and wrap [1] with a link to the footnote

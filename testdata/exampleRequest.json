@@ -441,6 +441,8 @@
     ],
     "missing_value_color": "LightGrey",
     "value_prefix": "",
-    "value_suffix": "% non-UK born"
+    "value_suffix": "% non-UK born",
+    "horizontal_legend_position": "before",
+    "vertical_legend_position": "after"
   }
 }

@@ -46,6 +46,126 @@ func TestRenderHTML(t *testing.T) {
 	})
 }
 
+func TestRenderHTML_HorizontalLegend(t *testing.T) {
+
+	Convey("Should render a horizontal legend before the map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.VerticalLegendPosition = ""
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+		// the legend
+		keys := findNodesWithClass(container, atom.Div, "map_key")
+		So(len(keys), ShouldEqual, 1)
+		key := keys[0]
+		So(GetAttribute(key, "class"), ShouldContainSubstring, "horizontal")
+		So(GetAttribute(key.NextSibling, "class"), ShouldEqual, "map")
+
+	})
+
+	Convey("Should render a horizontal legend after the map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionAfter
+		renderRequest.Choropleth.VerticalLegendPosition = ""
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+		// the legend
+		keys := findNodesWithClass(container, atom.Div, "map_key")
+		So(len(keys), ShouldEqual, 1)
+		key := keys[0]
+		So(GetAttribute(key, "class"), ShouldContainSubstring, "horizontal")
+		So(GetAttribute(key.PrevSibling, "class"), ShouldEqual, "map")
+
+	})
+}
+
+func TestRenderHTML_VerticalLegend(t *testing.T) {
+
+	Convey("Should render a vertical legend before the map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = ""
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+		// the legend
+		keys := findNodesWithClass(container, atom.Div, "map_key")
+		So(len(keys), ShouldEqual, 1)
+		key := keys[0]
+		So(GetAttribute(key, "class"), ShouldContainSubstring, "vertical")
+		So(GetAttribute(key.NextSibling, "class"), ShouldEqual, "map")
+
+	})
+
+	Convey("Should render a vertical legend after the map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = ""
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionAfter
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+		// the legend
+		keys := findNodesWithClass(container, atom.Div, "map_key")
+		So(len(keys), ShouldEqual, 1)
+		key := keys[0]
+		So(GetAttribute(key, "class"), ShouldContainSubstring, "vertical")
+		So(GetAttribute(key.PrevSibling, "class"), ShouldEqual, "map")
+
+	})
+}
+
+func TestRenderHTML_BothLegends(t *testing.T) {
+
+	Convey("Should render a vertical and horizontal legend before the map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+
+		container, _ := invokeRenderHTML(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+
+		// the legend
+		keys := findNodesWithClass(container, atom.Div, "map_key")
+		So(len(keys), ShouldEqual, 2)
+		key := keys[0]
+		So(GetAttribute(key, "class"), ShouldContainSubstring, "horizontal")
+		So(GetAttribute(key.NextSibling, "class"), ShouldContainSubstring, "vertical")
+		So(GetAttribute(key.NextSibling.NextSibling, "class"), ShouldEqual, "map")
+
+	})
+}
+
 func TestRenderHTMLWithNoSVG(t *testing.T) {
 
 	Convey("Successfully render an html response when no geography provided", t, func() {
@@ -168,4 +288,18 @@ func invokeRenderHTML(renderRequest *models.RenderRequest) (*html.Node, string) 
 	node := nodes[0]
 	So(node.DataAtom, ShouldEqual, atom.Figure)
 	return node, string(response)
+}
+
+func findNodesWithClass(parent *html.Node, a atom.Atom, class string) []*html.Node {
+	nodes := FindNodes(parent, a)
+	result := make([]*html.Node, 0)
+	for _, n := range nodes {
+		classAttr := GetAttribute(n, "class")
+		for _, c := range strings.Split(classAttr, " ") {
+			if c == class {
+				result = append(result, n)
+			}
+		}
+	}
+	return result
 }
