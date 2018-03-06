@@ -33,7 +33,6 @@ func TestRenderHTML(t *testing.T) {
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
 
-
 		// the footer - source
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -51,15 +50,14 @@ func TestRenderHTMLWithNoSVG(t *testing.T) {
 
 	Convey("Successfully render an html response when no geography provided", t, func() {
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Source: "source text",
+			Filename:  "testname",
+			Source:    "source text",
 			Footnotes: []string{"Note1", "Note2"},
 		}
 
 		container, _ := invokeRenderHTML(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-
 
 		// the footer - source
 		footer := FindNode(container, atom.Footer)
@@ -100,7 +98,7 @@ func TestRenderHTML_Source(t *testing.T) {
 	})
 
 	Convey("A renderRequest with a source link should have a source paragraph with anchor link", t, func() {
-		request := models.RenderRequest{Filename: "myId", Source: "mySource", SourceLink:"http://foo/bar"}
+		request := models.RenderRequest{Filename: "myId", Source: "mySource", SourceLink: "http://foo/bar"}
 		container, _ := invokeRenderHTML(&request)
 
 		footer := FindNode(container, atom.Footer)
@@ -112,7 +110,6 @@ func TestRenderHTML_Source(t *testing.T) {
 		So(link.FirstChild.Data, ShouldResemble, request.Source)
 	})
 }
-
 
 func TestRenderHTML_Footer(t *testing.T) {
 	Convey("A renderRequest without footnotes should not have notes paragraph", t, func() {

@@ -72,7 +72,7 @@ func New() *SVG {
 // Draw renders the final SVG with the given options to a string.
 // All coordinates will be scaled to fit into the svg.
 func (svg *SVG) Draw(width, height float64, opts ...Option) string {
-	return svg.DrawWithProjection(width, height, func(x,y float64) (float64, float64){ return x,y}, opts...)
+	return svg.DrawWithProjection(width, height, func(x, y float64) (float64, float64) { return x, y }, opts...)
 }
 
 // DrawWithProjection renders the final SVG with the given options to a string.
@@ -106,17 +106,17 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 
 // AppendGeometry adds a geojson Geometry to the svg.
 func (svg *SVG) AppendGeometry(g *geojson.Geometry) {
-	svg.elements = append(svg.elements, &SVGElement{geometry: g, elementType:Geometry})
+	svg.elements = append(svg.elements, &SVGElement{geometry: g, elementType: Geometry})
 }
 
 // AppendFeature adds a geojson Feature to the svg.
 func (svg *SVG) AppendFeature(f *geojson.Feature) {
-	svg.elements = append(svg.elements, &SVGElement{feature:f, elementType:Feature})
+	svg.elements = append(svg.elements, &SVGElement{feature: f, elementType: Feature})
 }
 
 // AppendFeatureCollection adds a geojson FeatureCollection to the svg.
 func (svg *SVG) AppendFeatureCollection(fc *geojson.FeatureCollection) {
-	svg.elements = append(svg.elements, &SVGElement{featureCollection:fc, elementType:FeatureCollection})
+	svg.elements = append(svg.elements, &SVGElement{featureCollection: fc, elementType: FeatureCollection})
 }
 
 // WithAttribute adds the key value pair as attribute to the
@@ -199,6 +199,9 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, 
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes, title)
 	case g.IsCollection():
 		fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+		if len(title) > 0 {
+			fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+		}
 		for _, x := range g.Geometries {
 			process(sf, w, x, "", "")
 		}
@@ -373,8 +376,8 @@ func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, proje
 }
 
 func getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float64, float64, float64) {
-	if len(ps) == 0  || len(ps[0]) == 0 {
-		return 0,0,0,0
+	if len(ps) == 0 || len(ps[0]) == 0 {
+		return 0, 0, 0, 0
 	}
 	minX, minY := projection(ps[0][0], ps[0][1])
 	maxX, maxY := projection(ps[0][0], ps[0][1])
@@ -391,9 +394,9 @@ func getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float6
 // GetHeightForWidth returns an appropriate height given a desired width.
 func (svg *SVG) GetHeightForWidth(width float64, projection ScaleFunc) float64 {
 	minX, minY, maxX, maxY := getBoundingRectangle(projection, svg.points())
-	svgWidth := maxX - minX;
-	svgHeight := maxY - minY;
-	ratio := svgHeight / svgWidth;
+	svgWidth := maxX - minX
+	svgHeight := maxY - minY
+	ratio := svgHeight / svgWidth
 	return math.Floor((width * ratio) + .5)
 
 }
@@ -448,7 +451,7 @@ func Centroid(sf ScaleFunc, poly [][][]float64) []float64 {
 		}
 	}
 
-	c := []float64{0,0}
+	c := []float64{0, 0}
 	for i := 0; i < len(ring)-1; i++ {
 		i0, i1 := sf(ring[i][0], ring[i][1])
 		j0, j1 := sf(ring[i+1][0], ring[i+1][1])

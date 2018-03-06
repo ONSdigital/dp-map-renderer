@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ONSdigital/dp-map-renderer/models"
-	"github.com/ONSdigital/dp-map-renderer/testdata"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/rubenv/topojson"
-	. "github.com/ONSdigital/dp-map-renderer/renderer"
 	"encoding/xml"
+	"fmt"
+
+	"github.com/ONSdigital/dp-map-renderer/models"
+	. "github.com/ONSdigital/dp-map-renderer/renderer"
+	"github.com/ONSdigital/dp-map-renderer/testdata"
+	"github.com/rubenv/topojson"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestRenderSVG(t *testing.T) {
@@ -33,7 +35,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 	Convey("RenderSVG should not fail with null Geography", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
+			Filename: "testname",
 		}
 
 		result := RenderSVG(renderRequest)
@@ -44,7 +46,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 	Convey("RenderSVG should not fail with null Topology", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
+			Filename:  "testname",
 			Geography: &models.Geography{},
 		}
 
@@ -56,8 +58,8 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 	Convey("RenderSVG should not fail with null Topology.Objects", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology()},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology()},
 		}
 		renderRequest.Geography.Topojson.Objects = nil
 
@@ -69,8 +71,8 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 	Convey("RenderSVG should not fail with null Topology.Arcs", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology()},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology()},
 		}
 		renderRequest.Geography.Topojson.Arcs = nil
 
@@ -82,11 +84,11 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 
 func TestSVGHasWidthAndHeight(t *testing.T) {
 
-	Convey("SVG should be given default width and proportional height", t, func() {
+	Convey("simpleSVG should be given default width and proportional height", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
 		result := RenderSVG(renderRequest)
@@ -97,12 +99,12 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 		So(svg.Height, ShouldEqual, "329")
 	})
 
-	Convey("SVG should use given width and calculate proportional height", t, func() {
+	Convey("simpleSVG should use given width and calculate proportional height", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
-			Width: 800,
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
+			Width:     800,
 		}
 
 		result := RenderSVG(renderRequest)
@@ -113,13 +115,13 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 		So(svg.Height, ShouldEqual, "658")
 	})
 
-	Convey("SVG should use given width and height", t, func() {
+	Convey("simpleSVG should use given width and height", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
-			Width: 800,
-			Height: 600,
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
+			Width:     800,
+			Height:    600,
 		}
 
 		result := RenderSVG(renderRequest)
@@ -152,11 +154,11 @@ func TestSVGHasCorrectViewBox(t *testing.T) {
 }
 func TestSVGContainsClassName(t *testing.T) {
 
-	Convey("SVG should assign class to map regions", t, func() {
+	Convey("simpleSVG should assign class to map regions", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 		renderRequest.Geography.Topojson.Objects["simplegeojson"].Geometries[0].Properties["class"] = "foo"
 
@@ -165,18 +167,18 @@ func TestSVGContainsClassName(t *testing.T) {
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].Class, ShouldEqual, REGION_CLASS_NAME + " foo")
+		So(svg.Paths[0].Class, ShouldEqual, REGION_CLASS_NAME+" foo")
 		So(svg.Paths[1].Class, ShouldEqual, REGION_CLASS_NAME)
 	})
 }
 
 func TestSVGContainsIDs(t *testing.T) {
 
-	Convey("SVG should assign ids to map regions", t, func() {
+	Convey("simpleSVG should assign ids to map regions", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
 		result := RenderSVG(renderRequest)
@@ -191,11 +193,11 @@ func TestSVGContainsIDs(t *testing.T) {
 
 func TestSVGContainsTitles(t *testing.T) {
 
-	Convey("SVG should assign names as titles to map regions", t, func() {
+	Convey("simpleSVG should assign names as titles to map regions", t, func() {
 
 		renderRequest := &models.RenderRequest{
-			Filename:"testname",
-			Geography: &models.Geography{Topojson:simpleTopology(), IDProperty:"code", NameProperty:"name"},
+			Filename:  "testname",
+			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
 		result := RenderSVG(renderRequest)
@@ -211,12 +213,12 @@ func TestSVGContainsTitles(t *testing.T) {
 
 func TestSVGContainsChoroplethColours(t *testing.T) {
 
-	Convey("SVG should use style to colour regions", t, func() {
+	Convey("simpleSVG should use style to colour regions", t, func() {
 
 		renderRequest := &models.RenderRequest{
 			Filename:   "testname",
 			Geography:  &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
-			Choropleth: &models.Choropleth{Breaks: []*models.ChoroplethBreak{{LowerBound: 0, Color: "red"}, {LowerBound: 11, Color: "green"}}},
+			Choropleth: &models.Choropleth{Breaks: []*models.ChoroplethBreak{{LowerBound: 0, Colour: "red"}, {LowerBound: 11, Colour: "green"}}},
 			Data:       []*models.DataRow{{ID: "f0", Value: 10}, {ID: "f1", Value: 20}},
 		}
 
@@ -233,15 +235,15 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 
 func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 
-	Convey("SVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
+	Convey("simpleSVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 			Choropleth: &models.Choropleth{MissingValueColor: "white",
-				Breaks: []*models.ChoroplethBreak{{LowerBound: 0, Color: "red"}, {LowerBound: 11, Color: "green"}},
-				ValuePrefix:"prefix-",
-				ValueSuffix:"-suffix"},
+				Breaks:      []*models.ChoroplethBreak{{LowerBound: 0, Colour: "red"}, {LowerBound: 11, Colour: "green"}},
+				ValuePrefix: "prefix-",
+				ValueSuffix: "-suffix"},
 			Data: []*models.DataRow{{ID: "f1", Value: 20}},
 		}
 
@@ -254,9 +256,59 @@ func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: white;")
 		So(svg.Paths[1].Style, ShouldContainSubstring, "fill: green;")
 
-		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 " + MISSING_DATA_TEXT)
+		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MISSING_DATA_TEXT)
 		So(svg.Paths[1].Title.Value, ShouldContainSubstring, "feature 1 prefix-20-suffix")
 	})
+}
+
+func TestRenderVerticalKey(t *testing.T) {
+	Convey("RenderVerticalKey should render an svg", t, func() {
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderVerticalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
+		// todo assert viewbox
+		assertKeyContents(result, renderRequest)
+
+	})
+
+}
+
+func assertKeyContents(result string, renderRequest *models.RenderRequest) {
+	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValuePrefix)
+	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValueSuffix)
+	for _, b := range renderRequest.Choropleth.Breaks {
+		So(result, ShouldContainSubstring, "fill: "+b.Colour)
+		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
+	}
+	So(result, ShouldContainSubstring, "fill: "+renderRequest.Choropleth.MissingValueColor)
+	So(result, ShouldContainSubstring, MISSING_DATA_TEXT)
+}
+
+func TestRenderHorizontalKey(t *testing.T) {
+	Convey("RenderVerticalKey should render an svg", t, func() {
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90">`)
+		// todo assert viewbox
+		assertKeyContents(result, renderRequest)
+	})
+
 }
 
 // simpleTopology returns a topology with 2 features: code=f0, name=feature 0; code=f1, name=feature 1
@@ -266,27 +318,27 @@ func simpleTopology() *topojson.Topology {
 }
 
 // definition of an SVG sufficient to get details for a simple topology
-type SVG struct {
-	Paths   []Path `xml:"path"`
+type simpleSVG struct {
+	Paths   []path `xml:"path"`
 	Width   string `xml:"width,attr"`
 	Height  string `xml:"height,attr"`
 	ViewBox string `xml:"viewBox,attr"`
 }
 
-type Path struct {
+type path struct {
 	D     string `xml:"d,attr"`
 	ID    string `xml:"id,attr"`
 	Style string `xml:"style,attr"`
 	Class string `xml:"class,attr"`
-	Title Title  `xml:"title"`
+	Title title  `xml:"title"`
 }
 
-type Title struct {
+type title struct {
 	Value string `xml:",chardata"`
 }
 
-func unmarshalSimpleSVG(source string) (*SVG, error) {
-	svg := &SVG{}
+func unmarshalSimpleSVG(source string) (*simpleSVG, error) {
+	svg := &simpleSVG{}
 	err := xml.Unmarshal([]byte(source), svg)
 	return svg, err
 }

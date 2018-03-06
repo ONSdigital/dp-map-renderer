@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"bytes"
+
+	"github.com/ONSdigital/dp-map-renderer/testdata"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 // A Mock io.reader to trigger errors on reading

@@ -3,11 +3,12 @@ package api
 import (
 	"net/http"
 
-	"github.com/ONSdigital/go-ns/log"
-	"github.com/gorilla/mux"
 	"errors"
+
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/ONSdigital/dp-map-renderer/renderer"
+	"github.com/ONSdigital/go-ns/log"
+	"github.com/gorilla/mux"
 )
 
 // Error types
@@ -43,7 +44,7 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var bytes []byte;
+	var bytes []byte
 
 	switch renderType {
 	case "html":

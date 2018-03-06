@@ -207,7 +207,6 @@ func withMultipleGeometries(t *testing.T) {
 	}
 }
 
-
 func withAFeature(t *testing.T) {
 	expected := trimSpace(`
 		<svg width="400" height="400">

@@ -16,6 +16,8 @@ import (
 )
 
 const SVG_REPLACEMENT_TEXT = "[SVG Here]"
+const VERTICAL_KEY_REPLACEMENT_TEXT = "[Vertical key Here]"
+const HORIZONTAL_KEY_REPLACEMENT_TEXT = "[Horizontal key Here]"
 
 var (
 	newLine      = regexp.MustCompile(`\n`)
@@ -26,18 +28,22 @@ var (
 	notesText          = "Notes"
 	footnoteHiddenText = "Footnote "
 )
+
 // TODO consider including a fallback base64-encoded png for the few browsers that don't support inline svg (IE8, Opera Mini, Android 2.3)
 // best option: http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
 // other possibilities: https://css-tricks.com/svg-fallbacks/
 //						https://stackoverflow.com/a/28239372
-
 
 // RenderHTML returns an HTML figure element with caption and footer, and a div with text that should be replaced by the SVG map
 func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 
 	figure := createFigure(request)
 
-	figure.AppendChild(h.CreateNode("div", atom.Div, SVG_REPLACEMENT_TEXT))
+	svgContainer := h.CreateNode("div", atom.Div, h.Attr("class", "map_container"))
+	figure.AppendChild(svgContainer)
+	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), SVG_REPLACEMENT_TEXT))
+	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
+	svgContainer.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
 
 	addFooter(request, figure)
 
@@ -46,6 +52,8 @@ func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 	buf.WriteString("\n")
 
 	result := strings.Replace(buf.String(), SVG_REPLACEMENT_TEXT, RenderSVG(request), 1)
+	result = strings.Replace(result, VERTICAL_KEY_REPLACEMENT_TEXT, RenderVerticalKey(request), 1)
+	result = strings.Replace(result, HORIZONTAL_KEY_REPLACEMENT_TEXT, RenderHorizontalKey(request), 1)
 
 	return []byte(result), nil
 }

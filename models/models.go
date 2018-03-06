@@ -59,7 +59,7 @@ type Choropleth struct {
 // ChoroplethBreak represents a single break - the point at which a colour changes
 type ChoroplethBreak struct {
 	LowerBound float64 `json:"lower_bound,omitempty"` // the lower bound for this colour
-	Color      string  `json:"color,omitempty"`
+	Colour     string  `json:"color,omitempty"`
 }
 
 // CreateRenderRequest manages the creation of a RenderRequest from a reader
