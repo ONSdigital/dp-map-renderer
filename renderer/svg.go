@@ -178,9 +178,9 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	keyWidth := svgWidth * 0.9
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	fmt.Fprintf(content, `<svg id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90">`, request.Filename, svgWidth)
+	fmt.Fprintf(content, `<svg id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90" viewBox="0 0 %g 90">`, request.Filename, svgWidth, svgWidth)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;">%s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, svgWidth*0.05)
 	left := 0.0
 	for i := 0; i < len(breaks); i++ {
@@ -216,12 +216,12 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	breaks, referencePos := getSortedBreakInfo(request)
 
 	keyHeight := svgHeight * 0.8
-	keyWidth := getVerticalKeyWidth(request)
+	keyWidth := getVerticalKeyWidth(request, breaks)
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	fmt.Fprintf(content, `<svg id="%s-legend-vertical" class="map_key_vertical" height="%g" viewBox="0 0 %g %g">`, request.Filename, svgHeight, keyWidth, svgHeight)
+	fmt.Fprintf(content, `<svg id="%s-legend-vertical" class="map_key_vertical" height="%g" width="%g" viewBox="0 0 %g %g">`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename,  keyWidth/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
@@ -247,10 +247,29 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 }
 
 // getVerticalKeyWidth determines the approximate width required for the key
-func getVerticalKeyWidth(request *models.RenderRequest) float64 {
+func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
 	missingWidth := getTextWidth(MISSING_DATA_TEXT, 12)
 	titleWidth := getTextWidth(request.Choropleth.ValuePrefix + " " + request.Choropleth.ValueSuffix, 0)
-	return math.Max(float64(missingWidth), float64(titleWidth)) + 10
+	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
+	return math.Max(maxWidth, getTickTextWidth(request, breaks)) + 10
+}
+
+// getTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
+func getTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+	maxTick := 0
+	for _, b := range breaks {
+		lbound := getTextWidth(fmt.Sprintf("%g", b.LowerBound), 0)
+		if lbound > maxTick {
+			maxTick = lbound
+		}
+		ubound := getTextWidth(fmt.Sprintf("%g", b.UpperBound), 0)
+		if ubound > maxTick {
+			maxTick = ubound
+		}
+	}
+	refTick := getTextWidth(request.Choropleth.ReferenceValueText, 0)
+	refValue := getTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
+	return float64(maxTick) + math.Max(float64(refTick), float64(refValue)) + 36
 }
 
 var narrowChars = regexp.MustCompile(`[ijlt;:,.'!]`)
@@ -272,37 +291,37 @@ func getTextWidth(text string, margin int) int {
 func writeKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
 	fmt.Fprintf(w, `%s<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="0" y="18" dy=".74em" style="text-anchor: middle;">%g</text>`, "\n", value)
+	fmt.Fprintf(w, `%s<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, "\n", value)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
 	fmt.Fprintf(w, `%s<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="-18" y="0" dy="0.32em" style="text-anchor: end;">%g</text>`, "\n", value)
+	fmt.Fprintf(w, `%s<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, "\n", value)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func writeKeyReferenceTick(w *bytes.Buffer, xPos float64, text string, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
 	fmt.Fprintf(w, `%s<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;">%s</text>`, "\n", text)
-	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;">%g</text>`, value)
+	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
+	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func writeVerticalKeyReferenceTick(w *bytes.Buffer, yPos float64, text string, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
 	fmt.Fprintf(w, `%s<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;">%s</text>`, "\n", text)
-	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;">%g</text>`, value)
+	fmt.Fprintf(w, `%s<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
+	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
 func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
 	fmt.Fprintf(w, `%s<g class="missingColour" transform="translate(%f, %f)">`, "\n", xPos, yPos)
 	fmt.Fprintf(w, `%s<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, "\n", colour)
-	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;">%s</text>`, "\n", MISSING_DATA_TEXT)
+	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", MISSING_DATA_TEXT)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 

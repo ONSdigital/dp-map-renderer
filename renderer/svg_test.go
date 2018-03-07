@@ -12,6 +12,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/rubenv/topojson"
 	. "github.com/smartystreets/goconvey/convey"
+	"regexp"
+	"strconv"
 )
 
 func TestRenderSVG(t *testing.T) {
@@ -274,9 +276,26 @@ func TestRenderVerticalKey(t *testing.T) {
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
-		// todo assert viewbox
 		assertKeyContents(result, renderRequest)
 
+	})
+
+}
+
+func TestRenderHorizontalKey(t *testing.T) {
+	Convey("RenderHorizontalKey should render an svg", t, func() {
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		assertKeyContents(result, renderRequest)
 	})
 
 }
@@ -290,25 +309,64 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 	}
 	So(result, ShouldContainSubstring, "fill: "+renderRequest.Choropleth.MissingValueColor)
 	So(result, ShouldContainSubstring, MISSING_DATA_TEXT)
+	// ensure all text has a class applied
+	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
+	withClass := regexp.MustCompile(`<text[^>]*class="[^"]*keyText[^>]*"`).FindAllStringIndex(result, -1)
+	So(len(withClass), ShouldEqual, len(textElements))
 }
 
-func TestRenderHorizontalKey(t *testing.T) {
-	Convey("RenderVerticalKey should render an svg", t, func() {
+func TestRenderVerticalKeyWidth(t *testing.T) {
+	Convey("RenderVerticalKey should adjust width to acommodate the text", t, func() {
 
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		renderRequest, err := models.CreateRenderRequest(reader)
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.Choropleth.ValueSuffix = "short text"
 
-		result := RenderHorizontalKey(renderRequest)
 
-		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90">`)
-		// todo assert viewbox
-		assertKeyContents(result, renderRequest)
+		result := RenderVerticalKey(renderRequest)
+
+		defaultWidth := getWidth(result)
+
+		Convey("A long title should cause the width to increase", func() {
+			renderRequest.Choropleth.ValueSuffix = "some text long enough to increase the width...."
+			width := getWidth(RenderVerticalKey(renderRequest))
+
+			So(width, ShouldBeGreaterThan, defaultWidth)
+
+		})
+
+		Convey("A long reference text should cause the width to increase", func() {
+			renderRequest.Choropleth.ValueSuffix = "short text"
+			renderRequest.Choropleth.ReferenceValueText = "some text long enough to increase the width..."
+			width := getWidth(RenderVerticalKey(renderRequest))
+
+			So(width, ShouldBeGreaterThan, defaultWidth)
+
+		})
+
+		Convey("Long tick values should cause the width to increase", func() {
+			renderRequest.Choropleth.ValueSuffix = "short text"
+			renderRequest.Choropleth.ReferenceValueText = ".."
+			renderRequest.Choropleth.Breaks[0].LowerBound = 123456.123456
+			renderRequest.Choropleth.ReferenceValue = 123456.123456
+			width := getWidth(RenderVerticalKey(renderRequest))
+
+			So(width, ShouldBeGreaterThan, defaultWidth)
+
+		})
 	})
 
+}
+func getWidth(result string) int {
+	widthRE := regexp.MustCompile(`width="([\d]+)"`)
+	submatch := widthRE.FindStringSubmatch(result)
+	So(len(submatch), ShouldEqual, 2)
+	width, err := strconv.Atoi(submatch[1])
+	So(err, ShouldBeNil)
+	return width
 }
 
 // simpleTopology returns a topology with 2 features: code=f0, name=feature 0; code=f1, name=feature 1
