@@ -17,8 +17,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-const footnoteLinkClass = "footnote__link"
-
 func TestRenderHTML(t *testing.T) {
 
 	Convey("Successfully render an html map", t, func() {
@@ -228,6 +226,29 @@ func TestRenderHTML_Source(t *testing.T) {
 		link := FindNodeWithAttributes(source, atom.A, map[string]string{"href": "http://foo/bar"})
 		So(link, ShouldNotBeNil)
 		So(link.FirstChild.Data, ShouldResemble, request.Source)
+	})
+}
+
+func TestRenderHTML_Licence(t *testing.T) {
+
+	Convey("A renderRequest without a licence should not have a licence paragraph", t, func() {
+		request := models.RenderRequest{Filename: "myId"}
+		container, _ := invokeRenderHTML(&request)
+
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		So(FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__licence"}), ShouldBeNil)
+	})
+
+	Convey("A renderRequest with a licence should have a licence paragraph", t, func() {
+		request := models.RenderRequest{Filename: "myId", Licence: "© Crown copyright 2015"}
+		container, _ := invokeRenderHTML(&request)
+
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		licence := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__licence"})
+		So(licence, ShouldNotBeNil)
+		So(licence.FirstChild.Data, ShouldResemble, request.Licence)
 	})
 }
 

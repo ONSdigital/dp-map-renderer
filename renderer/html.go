@@ -114,6 +114,12 @@ func addFooter(request *models.RenderRequest, parent *html.Node) {
 	footer := h.CreateNode("footer", atom.Footer,
 		h.Attr("class", "figure__footer"),
 		"\n")
+	if len(request.Licence) > 0 {
+		footer.AppendChild(h.CreateNode("p", atom.P,
+			h.Attr("class", "figure__licence"),
+			request.Licence))
+		footer.AppendChild(h.Text("\n"))
+	}
 	if len(request.Source) > 0 {
 		var source interface{} = request.Source
 		if len(request.SourceLink) > 0 {

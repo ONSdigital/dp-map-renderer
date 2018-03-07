@@ -29,6 +29,7 @@ type RenderRequest struct {
 	Subtitle   string      `json:"subtitle,omitempty"`
 	Source     string      `json:"source,omitempty"`
 	SourceLink string      `json:"source_link,omitempty"`
+	Licence    string      `json:"licence,omitempty"`
 	Filename   string      `json:"filename,omitempty"`
 	Footnotes  []string    `json:"footnotes,omitempty"`
 	MapType    string      `json:"map_type,omitempty"`

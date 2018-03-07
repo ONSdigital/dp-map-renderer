@@ -3,6 +3,7 @@
   "subtitle": "Annual Population Survey",
   "source": "source text",
   "source_link": "http://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/internationalmigration/articles/populationbycountryofbirthandnationalityreport/previousReleases",
+  "licence": "© Crown copyright 2015",
   "filename": "abcd1234",
   "footnotes": ["Do we need footnotes?"],
   "map_type": "choropleth",

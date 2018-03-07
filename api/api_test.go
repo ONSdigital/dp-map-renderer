@@ -38,7 +38,7 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 		So(w.Body.String(), ShouldContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "Non-UK born population, Great Britain, 2015")
 		if saveTestResponse {
-			s := exampleResponseStart + w.Body.String()
+			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)
 		}
 	})
@@ -91,50 +91,58 @@ func TestRejectInvalidRequest(t *testing.T) {
 }
 
 var exampleResponseStart = `
-<style>
-body {
-	font-family: sans-serif;
-}
-.map__caption {
-	font-size: 150%;fill: 
-	font-weight: bold;
-}
-.map__subtitle {
-	font-size: 75%;
-}
-div.map_key__vertical, div.map {
-	display: inline-block;
-}
-div.map_key__horizontal {
-	clear: both;
-}
-.mapRegion:hover {
-	stroke: purple;
-	stroke-width: 1;
-}
-#abcd1234-legend-horizontal {
-	display: none;
-}
-.map svg {
-	background-color: LightBlue;
-}
-</style>
-<script type="text/javascript">
-function toggleLegend() {
-	vert = document.getElementById("abcd1234-legend-vertical")
-	horiz = document.getElementById("abcd1234-legend-horizontal")
-	if (( vert.offsetWidth || vert.offsetHeight || vert.getClientRects().length )) {
-		vert.style.display = "none"
-		horiz.style.display = "block"
-	} else {
-		horiz.style.display = "none"
-		vert.style.display = "block"
+<html>
+<head>
+	<meta charset="UTF-8">
+	<style>
+	body {
+		font-family: sans-serif;
 	}
-}
-</script>
+	.map__caption {
+		font-size: 150%;fill: 
+		font-weight: bold;
+	}
+	.map__subtitle {
+		font-size: 75%;
+	}
+	div.map_key__vertical, div.map {
+		display: inline-block;
+	}
+	div.map_key__horizontal {
+		clear: both;
+	}
+	.mapRegion:hover {
+		stroke: purple;
+		stroke-width: 1;
+	}
+	#abcd1234-legend-horizontal {
+		display: none;
+	}
+	.map svg {
+		background-color: LightBlue;
+	}
+	</style>
+	<script type="text/javascript">
+	function toggleLegend() {
+		vert = document.getElementById("abcd1234-legend-vertical")
+		horiz = document.getElementById("abcd1234-legend-horizontal")
+		if (( vert.offsetWidth || vert.offsetHeight || vert.getClientRects().length )) {
+			vert.style.display = "none"
+			horiz.style.display = "block"
+		} else {
+			horiz.style.display = "none"
+			vert.style.display = "block"
+		}
+	}
+	</script>
+</head>
+<body>
 <p>This page has additional styling to set the background colour of the svg, highlight region borders on hover,
 	<br/>and position the legend(s). There's also javascript to toggle between the 2 legends (horizontal and vertical)
 	- the same can be achieved with css alone using min-width and max-width selectors.
 </p>
 <button onclick="toggleLegend()">Toggle legend position</button>
 `
+var exampleResponseEnd = `
+</body>
+</html>`
