@@ -15,9 +15,9 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-const SVG_REPLACEMENT_TEXT = "[SVG Here]"
-const VERTICAL_KEY_REPLACEMENT_TEXT = "[Vertical key Here]"
-const HORIZONTAL_KEY_REPLACEMENT_TEXT = "[Horizontal key Here]"
+const svgReplacementText = "[SVG Here]"
+const verticalKeyReplacementText = "[Vertical key Here]"
+const horizontalKeyReplacementText = "[Horizontal key Here]"
 
 var (
 	newLine      = regexp.MustCompile(`\n`)
@@ -93,19 +93,19 @@ func addSVGDivs(request *models.RenderRequest, parent *html.Node) {
 	}
 
 	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), horizontalKeyReplacementText))
 	}
 	if request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), verticalKeyReplacementText))
 	}
 
-	parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), SVG_REPLACEMENT_TEXT))
+	parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), svgReplacementText))
 
 	if request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), VERTICAL_KEY_REPLACEMENT_TEXT))
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), verticalKeyReplacementText))
 	}
 	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), HORIZONTAL_KEY_REPLACEMENT_TEXT))
+		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), horizontalKeyReplacementText))
 	}
 }
 
@@ -159,12 +159,12 @@ func addFooterItemsToList(request *models.RenderRequest, ol *html.Node) {
 
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
 func renderSVGs(request *models.RenderRequest, original string) string {
-	result := strings.Replace(original, SVG_REPLACEMENT_TEXT, RenderSVG(request), 1)
-	if strings.Contains(result, VERTICAL_KEY_REPLACEMENT_TEXT) {
-		result = strings.Replace(result, VERTICAL_KEY_REPLACEMENT_TEXT, RenderVerticalKey(request), 1)
+	result := strings.Replace(original, svgReplacementText, RenderSVG(request), 1)
+	if strings.Contains(result, verticalKeyReplacementText) {
+		result = strings.Replace(result, verticalKeyReplacementText, RenderVerticalKey(request), 1)
 	}
-	if strings.Contains(result, HORIZONTAL_KEY_REPLACEMENT_TEXT) {
-		result = strings.Replace(result, HORIZONTAL_KEY_REPLACEMENT_TEXT, RenderHorizontalKey(request), 1)
+	if strings.Contains(result, horizontalKeyReplacementText) {
+		result = strings.Replace(result, horizontalKeyReplacementText, RenderHorizontalKey(request), 1)
 	}
 	return result
 }

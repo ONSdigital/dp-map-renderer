@@ -7,13 +7,14 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"regexp"
+	"strconv"
+
 	"github.com/ONSdigital/dp-map-renderer/models"
 	. "github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/rubenv/topojson"
 	. "github.com/smartystreets/goconvey/convey"
-	"regexp"
-	"strconv"
 )
 
 func TestRenderSVG(t *testing.T) {
@@ -169,8 +170,8 @@ func TestSVGContainsClassName(t *testing.T) {
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].Class, ShouldEqual, REGION_CLASS_NAME+" foo")
-		So(svg.Paths[1].Class, ShouldEqual, REGION_CLASS_NAME)
+		So(svg.Paths[0].Class, ShouldEqual, RegionClassName+" foo")
+		So(svg.Paths[1].Class, ShouldEqual, RegionClassName)
 	})
 }
 
@@ -258,7 +259,7 @@ func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: white;")
 		So(svg.Paths[1].Style, ShouldContainSubstring, "fill: green;")
 
-		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MISSING_DATA_TEXT)
+		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MissingDataText)
 		So(svg.Paths[1].Title.Value, ShouldContainSubstring, "feature 1 prefix-20-suffix")
 	})
 }
@@ -308,7 +309,7 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
 	So(result, ShouldContainSubstring, "fill: "+renderRequest.Choropleth.MissingValueColor)
-	So(result, ShouldContainSubstring, MISSING_DATA_TEXT)
+	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
 	withClass := regexp.MustCompile(`<text[^>]*class="[^"]*keyText[^>]*"`).FindAllStringIndex(result, -1)
@@ -324,7 +325,6 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 			t.Fatal(err)
 		}
 		renderRequest.Choropleth.ValueSuffix = "short text"
-
 
 		result := RenderVerticalKey(renderRequest)
 

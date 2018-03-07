@@ -16,8 +16,10 @@ import (
 	"github.com/paulmach/go.geojson"
 )
 
+// ElementType represents the elements that may be represented in an SVG
 type ElementType int
 
+// The possible ElementTypes in an SVG
 const (
 	Geometry          ElementType = iota
 	Feature           ElementType = iota

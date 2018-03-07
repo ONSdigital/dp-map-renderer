@@ -20,7 +20,7 @@ var (
 // possible values for the 2 LegendPositions. 'None' is the default.
 var (
 	LegendPositionBefore = "before"
-	LegendPositionAfter = "after"
+	LegendPositionAfter  = "after"
 )
 
 // RenderRequest represents a structure for a map render job

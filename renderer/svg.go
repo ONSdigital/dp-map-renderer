@@ -6,17 +6,18 @@ import (
 	"math"
 	"sort"
 
+	"regexp"
+
 	g2s "github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
-	"regexp"
 )
 
-// REGION_CLASS_NAME is the name of the class assigned to all map regions (denoted by features in the input topology)
-const REGION_CLASS_NAME = "mapRegion"
+// RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
+const RegionClassName = "mapRegion"
 
-// MISSING_DATA_TEXT is the text appended to the title of a region that has missing data
-const MISSING_DATA_TEXT = "data unavailable"
+// MissingDataText is the text appended to the title of a region that has missing data
+const MissingDataText = "data unavailable"
 
 type valueAndColour struct {
 	value  float64
@@ -33,7 +34,7 @@ func RenderSVG(request *models.RenderRequest) string {
 
 	idPrefix := request.Filename + "-"
 	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, idPrefix)
-	setClassProperty(geoJSON.Features, REGION_CLASS_NAME)
+	setClassProperty(geoJSON.Features, RegionClassName)
 	setChoroplethColoursAndTitles(geoJSON.Features, request, idPrefix)
 
 	svg := g2s.New()
@@ -46,7 +47,7 @@ func RenderSVG(request *models.RenderRequest) string {
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %g %g", width, vbHeight)))
 }
 
-// getGeoJSON performas a sanity check for missing proeprties, then converts the topojson to geojson
+// getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
 func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
 	// sanity check
 	if request.Geography == nil ||
@@ -120,7 +121,7 @@ func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.
 			style = "fill: " + vc.colour + ";"
 			title = fmt.Sprintf("%v %s%g%s", title, choropleth.ValuePrefix, vc.value, choropleth.ValueSuffix)
 		} else {
-			title = fmt.Sprintf("%v %s", title, MISSING_DATA_TEXT)
+			title = fmt.Sprintf("%v %s", title, MissingDataText)
 		}
 		feature.Properties[request.Geography.NameProperty] = title
 		appendProperty(feature, "style", style)
@@ -155,9 +156,8 @@ func sortBreaks(breaks []*models.ChoroplethBreak, asc bool) []*models.Choropleth
 	sort.Slice(c, func(i, j int) bool {
 		if asc {
 			return c[i].LowerBound < c[j].LowerBound
-		} else {
-			return c[i].LowerBound > c[j].LowerBound
 		}
+		return c[i].LowerBound > c[j].LowerBound
 	})
 	return c
 }
@@ -222,7 +222,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	fmt.Fprintf(content, `<svg id="%s-legend-vertical" class="map_key_vertical" height="%g" width="%g" viewBox="0 0 %g %g">`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
 	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename,  keyWidth/2, svgHeight*0.1)
+	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename, keyWidth/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
@@ -239,7 +239,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	fmt.Fprint(content, ticks.String())
 	fmt.Fprintf(content, `%s</g>`, "\n")
 	if len(request.Choropleth.MissingValueColor) > 0 {
-		xPos := (keyWidth - float64(getTextWidth(MISSING_DATA_TEXT, 12))) / 2
+		xPos := (keyWidth - float64(getTextWidth(MissingDataText, 12))) / 2
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
 	}
 	fmt.Fprintf(content, `%s</g>%s</svg>`, "\n", "\n")
@@ -248,8 +248,8 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 
 // getVerticalKeyWidth determines the approximate width required for the key
 func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
-	missingWidth := getTextWidth(MISSING_DATA_TEXT, 12)
-	titleWidth := getTextWidth(request.Choropleth.ValuePrefix + " " + request.Choropleth.ValueSuffix, 0)
+	missingWidth := getTextWidth(MissingDataText, 12)
+	titleWidth := getTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
 	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
 	return math.Max(maxWidth, getTickTextWidth(request, breaks)) + 10
 }
@@ -272,7 +272,7 @@ func getTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float6
 	return float64(maxTick) + math.Max(float64(refTick), float64(refValue)) + 36
 }
 
-var narrowChars = regexp.MustCompile(`[ijlt;:,.'!]`)
+var narrowChars = regexp.MustCompile(`[1ijlt;:,.'!]`)
 var medChars = regexp.MustCompile(`[abcdefghknoprsuvxyz ]`)
 
 // getTextWidth determines the (approximate) width required to display the given text
@@ -285,7 +285,7 @@ func getTextWidth(text string, margin int) int {
 	narrow := length - len(narrowChars.ReplaceAllLiteralString(text, ""))
 	med := length - len(medChars.ReplaceAllLiteralString(text, ""))
 	wide := length - narrow - med
-	return wide * emWidth  + narrow * narrowWidth + med * medWidth + margin
+	return wide*emWidth + narrow*narrowWidth + med*medWidth + margin
 }
 
 func writeKeyTick(w *bytes.Buffer, xPos float64, value float64) {
@@ -321,7 +321,7 @@ func writeVerticalKeyReferenceTick(w *bytes.Buffer, yPos float64, text string, v
 func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
 	fmt.Fprintf(w, `%s<g class="missingColour" transform="translate(%f, %f)">`, "\n", xPos, yPos)
 	fmt.Fprintf(w, `%s<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, "\n", colour)
-	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", MISSING_DATA_TEXT)
+	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", MissingDataText)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 

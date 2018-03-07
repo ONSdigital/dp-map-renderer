@@ -90,7 +90,7 @@ func TestRejectInvalidRequest(t *testing.T) {
 	})
 }
 
-var exampleResponseStart=`
+var exampleResponseStart = `
 <style>
 body {
 	font-family: sans-serif;
