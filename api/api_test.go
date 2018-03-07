@@ -18,7 +18,6 @@ import (
 var (
 	host           = "http://localhost:80"
 	requestHTMLURL = host + "/render/html"
-	requestBody    = `{"title":"map_title", "filename": "file_name", "type":"map_type"}`
 )
 
 var saveTestResponse = true
@@ -44,26 +43,9 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 	})
 }
 
-func TestSuccessfullyRenderEmptyMap(t *testing.T) {
-	Convey("Successfully render html without an svg", t, func() {
-		reader := strings.NewReader(requestBody)
-		r, err := http.NewRequest("POST", requestHTMLURL, reader)
-		So(err, ShouldBeNil)
-
-		w := httptest.NewRecorder()
-		api := routes(mux.NewRouter())
-		api.router.ServeHTTP(w, r)
-		So(w.Code, ShouldEqual, http.StatusOK)
-		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
-		So(w.Body.String(), ShouldNotContainSubstring, "<svg")
-		So(w.Body.String(), ShouldContainSubstring, "map_title")
-	})
-}
-
 func TestRejectInvalidRequest(t *testing.T) {
-	t.Parallel()
 	Convey("Reject invalid render type in url with StatusNotFound", t, func() {
-		reader := strings.NewReader(requestBody)
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		r, err := http.NewRequest("POST", host+"/render/foo", reader)
 		So(err, ShouldBeNil)
 
@@ -86,7 +68,7 @@ func TestRejectInvalidRequest(t *testing.T) {
 
 		bodyBytes, _ := ioutil.ReadAll(w.Body)
 		response := string(bodyBytes)
-		So(response, ShouldResemble, "Bad request - Invalid request body\n")
+		So(response, ShouldResemble, "unexpected end of JSON input\n")
 	})
 }
 

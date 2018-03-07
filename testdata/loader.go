@@ -6,7 +6,12 @@ import (
 	"testing"
 )
 
-// LoadExampleRequest reads the example request from examplerequest.json
+// LoadExampleAnalyseRequest reads the example request from exampleAnalyseRequest.json
+func LoadExampleAnalyseRequest(t *testing.T) []byte {
+	return loadTestdata(t, "exampleAnalyseRequest.json")
+}
+
+// LoadExampleRequest reads the example request from exampleRequest.json
 func LoadExampleRequest(t *testing.T) []byte {
 	return loadTestdata(t, "exampleRequest.json")
 }

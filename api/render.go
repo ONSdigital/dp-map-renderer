@@ -34,13 +34,13 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 	renderRequest, err := models.CreateRenderRequest(r.Body)
 	if err != nil {
 		log.Error(err, nil)
-		http.Error(w, badRequest, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err = renderRequest.ValidateRenderRequest(); err != nil {
 		log.Error(err, nil)
-		http.Error(w, badRequest, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
