@@ -20,15 +20,21 @@ func (api *RendererAPI) analyseData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = request.ValidateAnalyseRequest(); err != nil {
-		log.Error(err, nil)
+		log.Error(err, log.Data{"_message": "AnalyseRequest failed validation"})
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	response := analyser.AnalyseData(request)
+	response, err := analyser.AnalyseData(request)
+	if err != nil {
+		log.Error(err, log.Data{"_message": "Unable to Analyse request"})
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	bytes, err := json.Marshal(response)
 	if err != nil {
-		log.Error(err, log.Data{})
+		log.Error(err, log.Data{"_message": "Unable to marshal response"})
 		setErrorCode(w, err)
 		return
 	}

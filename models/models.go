@@ -73,23 +73,23 @@ type ChoroplethBreak struct {
 
 // AnalyseRequest represents the structure of a request to analyse data and ensure it matches a topology
 type AnalyseRequest struct {
-	Geography  *Geography  `json:"geography"`
-	CSV string	`json:"csv"`
-	IDIndex	int	`json:"id_index"`
-	ValueIndex	int	`json:"value_index"`
-	HasHeaderRow	bool	`json:"has_header_row"`
+	Geography    *Geography `json:"geography"`
+	CSV          string     `json:"csv"`
+	IDIndex      int        `json:"id_index"`
+	ValueIndex   int        `json:"value_index"`
+	HasHeaderRow bool       `json:"has_header_row"`
 }
 
 // AnalyseResponse represents the structure of an analyse data response
 type AnalyseResponse struct {
-	Data []*DataRow `json:"data"`
+	Data     []*DataRow `json:"data"`
 	Messages []*Message `json:"messages"`
 }
 
 // Message represents a message with a level type
 type Message struct {
-	Level	string	`json:"level"`
-	Text	string	`json:"text"`
+	Level string `json:"level"`
+	Text  string `json:"text"`
 }
 
 // CreateRenderRequest manages the creation of a RenderRequest from a reader

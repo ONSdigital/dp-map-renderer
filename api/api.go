@@ -53,6 +53,7 @@ func routes(router *mux.Router) *RendererAPI {
 	router.Path("/healthcheck").Methods("GET").HandlerFunc(health.EmptyHealthcheck)
 
 	api.router.HandleFunc("/render/{render_type}", api.renderMap).Methods("POST")
+	api.router.HandleFunc("/analyse", api.analyseData).Methods("POST")
 	return &api
 }
 

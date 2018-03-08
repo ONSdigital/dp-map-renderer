@@ -83,6 +83,11 @@ func setFeatureIDs(features []*geojson.Feature, idProperty string, idPrefix stri
 		id, isString := feature.Properties[idProperty].(string)
 		if isString && len(id) > 0 {
 			feature.ID = idPrefix + id
+		} else {
+			id, isString := feature.ID.(string)
+			if isString && len(id) > 0 {
+				feature.ID = idPrefix + id
+			}
 		}
 	}
 }
