@@ -101,7 +101,7 @@ var exampleResponseStart = `
 		font-family: sans-serif;
 	}
 	.map__caption {
-		font-size: 150%;fill: 
+		font-size: 150%; 
 		font-weight: bold;
 	}
 	.map__subtitle {
