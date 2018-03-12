@@ -21,6 +21,12 @@
 			"revisionTime": "2018-01-29T10:36:49Z"
 		},
 		{
+			"checksumSHA1": "Qb75qgDWyhx3xwSbzVGNScwH9Yc=",
+			"path": "github.com/ThinkingLogic/jenks",
+			"revision": "ba7cc45dc753c8bb956a04ca2e9cefd1eb6ba253",
+			"revisionTime": "2018-03-09T15:37:43Z"
+		},
+		{
 			"checksumSHA1": "yIkYzW7bzAD81zHyuCNmEj4+oxQ=",
 			"path": "github.com/gopherjs/gopherjs/js",
 			"revision": "178c176a91fe05e3e6c58fa5c989bad19e6cdcb3",
