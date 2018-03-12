@@ -162,6 +162,10 @@ type parseInfo struct {
 // This is purely a best guess suggestion
 func bestFitClassCount(data []float64, allBreaks [][]float64) int {
 
+	if len(allBreaks) == 0 {
+		return 0
+	}
+	
 	const classCountFactor = 0.2
 	goodnessFactor := 1.0 - classCountFactor
 

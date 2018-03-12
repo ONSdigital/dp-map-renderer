@@ -8,8 +8,6 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/ONSdigital/dp-map-renderer/analyser"
-	"fmt"
-	"encoding/json"
 )
 
 func TestAnalyseData(t *testing.T) {

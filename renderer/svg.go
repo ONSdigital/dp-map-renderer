@@ -185,7 +185,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	ticks := bytes.NewBufferString("")
 	fmt.Fprintf(content, `<svg id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90" viewBox="0 0 %g 90">`, request.Filename, svgWidth, svgWidth)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, svgWidth*0.05)
 	left := 0.0
 	for i := 0; i < len(breaks); i++ {
