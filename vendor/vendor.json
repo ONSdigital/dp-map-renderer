@@ -21,10 +21,10 @@
 			"revisionTime": "2018-01-29T10:36:49Z"
 		},
 		{
-			"checksumSHA1": "Qb75qgDWyhx3xwSbzVGNScwH9Yc=",
+			"checksumSHA1": "+8o5JoN59e/DpjcZKX9JRncEMMY=",
 			"path": "github.com/ThinkingLogic/jenks",
-			"revision": "ba7cc45dc753c8bb956a04ca2e9cefd1eb6ba253",
-			"revisionTime": "2018-03-09T15:37:43Z"
+			"revision": "34414952946842de09c7d8407233ac3fd41bcf56",
+			"revisionTime": "2018-03-12T11:28:12Z"
 		},
 		{
 			"checksumSHA1": "yIkYzW7bzAD81zHyuCNmEj4+oxQ=",
@@ -143,7 +143,7 @@
 			"revisionTime": "2017-09-25T09:26:47Z"
 		},
 		{
-			"checksumSHA1": "iWvOOLdDxvI4AVX6px6/HYBPeaQ=",
+			"checksumSHA1": "uMRr2bnIJS+9Xm0FqMBYUTzaSGs=",
 			"path": "golang.org/x/net/html/atom",
 			"revision": "434ec0c7fe3742c984919a691b2018a6e9694425",
 			"revisionTime": "2017-09-25T09:26:47Z"
