@@ -68,7 +68,7 @@ type Choropleth struct {
 
 // ChoroplethBreak represents a single break - the point at which a colour changes
 type ChoroplethBreak struct {
-	LowerBound float64 `json:"lower_bound,omitempty"` // the lower bound for this colour
+	LowerBound float64 `json:"lower_bound"` // the lower bound for this colour
 	Colour     string  `json:"color,omitempty"`
 }
 
@@ -83,11 +83,11 @@ type AnalyseRequest struct {
 
 // AnalyseResponse represents the structure of an analyse data response
 type AnalyseResponse struct {
-	Data     []*DataRow `json:"data"`
-	Messages []*Message `json:"messages"`
-	Breaks   []*ChoroplethBreak `json:"breaks"`
-	MinValue float64 `json:"min_value"`
-	MaxValue float64 `json:"max_value"`
+	Data     []*DataRow  `json:"data"`
+	Messages []*Message  `json:"messages"`
+	Breaks   [][]float64 `json:"breaks"`
+	MinValue float64     `json:"min_value"`
+	MaxValue float64     `json:"max_value"`
 }
 
 // Message represents a message with a level type

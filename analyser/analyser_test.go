@@ -8,6 +8,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/ONSdigital/dp-map-renderer/analyser"
+	"fmt"
+	"encoding/json"
 )
 
 func TestAnalyseData(t *testing.T) {
@@ -42,6 +44,13 @@ func TestAnalyseData(t *testing.T) {
 		So(len(info), ShouldEqual, 1)
 		So(info[0].Text, ShouldContainSubstring, "373") // number of rows parsed successfully
 		So(info[0].Text, ShouldContainSubstring, "422") // total number of rows
+		So(result.MinValue, ShouldEqual, 0.0)
+		So(result.MaxValue, ShouldEqual, 54.0)
+		So(len(result.Breaks), ShouldEqual, 10)
+		So(result.Breaks[0], ShouldResemble, []float64{0.0, 22.0})
+		So(result.Breaks[9], ShouldResemble, []float64{0.0, 4.0, 7.0, 10.0, 13.0, 16.0, 20.0, 26.0, 33.0, 39.0, 46.0})
+		bytes, _ := json.Marshal(result)
+		fmt.Println(string(bytes))
 	})
 
 }

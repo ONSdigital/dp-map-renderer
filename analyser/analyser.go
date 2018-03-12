@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"github.com/ONSdigital/go-ns/log"
 	"github.com/rubenv/topojson"
+	"github.com/ThinkingLogic/jenks"
+	"sort"
 )
 
 // AnalyseData analyses the given topology and csv file to confirm that they match, returning the csv converted to json
@@ -39,8 +41,23 @@ func AnalyseData(request *models.AnalyseRequest) (*models.AnalyseResponse, error
 
 	count := len(parseInfo.rows) - len(unmatchedRows)
 	messages = append(messages, &models.Message{Level:"info", Text: fmt.Sprintf("Successfully processed %d of %d rows", count, parseInfo.totalRows)})
-	return &models.AnalyseResponse{Data:parseInfo.rows, Messages:messages}, nil
+
+	values := extractValues(parseInfo.rows)
+	breaks := jenks.AllNaturalBreaks(values, 11)
+
+	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue:values[0], MaxValue:values[len(values)-1]}, nil
 }
+
+// extractValues extracts and sorts the values in rows.
+func extractValues(rows []*models.DataRow) []float64 {
+	values := make([]float64, len(rows))
+	for i := range rows {
+		values[i] = rows[i].Value
+	}
+	sort.Float64s(values)
+	return values
+}
+
 
 // parseData parses the csv file into a slice of DataRows, returning it along with messages about the number of rows parsed and any failed rows.
 func parseData(csvSource string, idIndex int, valueIndex int, hasHeader bool) (*parseInfo, error){
