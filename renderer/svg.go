@@ -348,7 +348,10 @@ func getSortedBreakInfo(request *models.RenderRequest) ([]*breakInfo, float64) {
 
 	breaks := sortBreaks(request.Choropleth.Breaks, true)
 	minValue := math.Min(data[0].Value, breaks[0].LowerBound)
-	maxValue := math.Max(data[len(data)-1].Value, breaks[len(breaks)-1].LowerBound)
+	maxValue := request.Choropleth.UpperBound
+	if maxValue < breaks[len(breaks)-1].LowerBound {
+		maxValue = data[len(data)-1].Value
+	}
 	totalRange := maxValue - minValue
 
 	breakCount := len(breaks)

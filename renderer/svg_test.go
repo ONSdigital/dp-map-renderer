@@ -301,6 +301,26 @@ func TestRenderHorizontalKey(t *testing.T) {
 
 }
 
+func TestRenderHorizontalKeyHasCorrectUpperBound(t *testing.T) {
+	Convey("RenderHorizontalKey should render an svg with upper bound text as specified in the request", t, func() {
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.UpperBound = 53
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldNotContainSubstring, `>54<`)
+		So(result, ShouldContainSubstring, `>53<`)
+
+	})
+
+}
+
 func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValuePrefix)
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValueSuffix)

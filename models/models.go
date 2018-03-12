@@ -60,6 +60,7 @@ type Choropleth struct {
 	ValuePrefix              string             `json:"value_prefix,omitempty"`
 	ValueSuffix              string             `json:"value_suffix,omitempty"`
 	Breaks                   []*ChoroplethBreak `json:"breaks,omitempty"`
+	UpperBound               float64            `json:"upper_bound,omitempty"`
 	MissingValueColor        string             `json:"missing_value_color,omitempty"`
 	HorizontalLegendPosition string             `json:"horizontal_legend_position, omitempty"` // before, after or none (the default)
 	VerticalLegendPosition   string             `json:"vertical_legend_position, omitempty"`   // before, after or none (the default)
@@ -84,6 +85,9 @@ type AnalyseRequest struct {
 type AnalyseResponse struct {
 	Data     []*DataRow `json:"data"`
 	Messages []*Message `json:"messages"`
+	Breaks   []*ChoroplethBreak `json:"breaks"`
+	MinValue float64 `json:"min_value"`
+	MaxValue float64 `json:"max_value"`
 }
 
 // Message represents a message with a level type
@@ -189,10 +193,10 @@ func (r *AnalyseRequest) ValidateAnalyseRequest() error {
 		return fmt.Errorf("Missing mandatory field(s): %v", missingFields)
 	}
 	if r.IDIndex < 0 || r.ValueIndex < 0 {
-		return fmt.Errorf("id_index and value_index must be >=0: id_index=%v, value_index=", r.IDIndex, r.ValueIndex)
+		return fmt.Errorf("id_index and value_index must be >=0: id_index=%v, value_index=%v", r.IDIndex, r.ValueIndex)
 	}
 	if r.IDIndex == r.ValueIndex {
-		return fmt.Errorf("id_index and value_index cannot refer to the same column: id_index=%v, value_index=", r.IDIndex, r.ValueIndex)
+		return fmt.Errorf("id_index and value_index cannot refer to the same column: id_index=%v, value_index=%v", r.IDIndex, r.ValueIndex)
 	}
 	return nil
 }
