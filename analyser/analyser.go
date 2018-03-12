@@ -44,6 +44,9 @@ func AnalyseData(request *models.AnalyseRequest) (*models.AnalyseResponse, error
 
 	values := extractValues(parseInfo.rows)
 	breaks := jenks.AllNaturalBreaks(values, 11)
+	for i := range breaks {
+		breaks[i] = jenks.Round(breaks[i], values)
+	}
 
 	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue:values[0], MaxValue:values[len(values)-1]}, nil
 }
