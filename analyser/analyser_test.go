@@ -49,8 +49,8 @@ func TestAnalyseData(t *testing.T) {
 		So(len(result.Breaks), ShouldEqual, 10)
 		So(result.Breaks[0], ShouldResemble, []float64{0.0, 22.0})
 		So(result.Breaks[9], ShouldResemble, []float64{0.0, 4.0, 7.0, 10.0, 13.0, 16.0, 20.0, 26.0, 33.0, 39.0, 46.0})
-		bytes, _ := json.Marshal(result)
-		fmt.Println(string(bytes))
+		So(result.BestFitClassCount, ShouldEqual, 5)
+
 	})
 
 }

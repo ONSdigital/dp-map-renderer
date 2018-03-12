@@ -83,11 +83,12 @@ type AnalyseRequest struct {
 
 // AnalyseResponse represents the structure of an analyse data response
 type AnalyseResponse struct {
-	Data     []*DataRow  `json:"data"`
-	Messages []*Message  `json:"messages"`
-	Breaks   [][]float64 `json:"breaks"`
-	MinValue float64     `json:"min_value"`
-	MaxValue float64     `json:"max_value"`
+	Data              []*DataRow  `json:"data"`
+	Messages          []*Message  `json:"messages"`
+	Breaks            [][]float64 `json:"breaks"`
+	BestFitClassCount int         `json:"best_fit_class_count"`
+	MinValue          float64     `json:"min_value"`
+	MaxValue          float64     `json:"max_value"`
 }
 
 // Message represents a message with a level type

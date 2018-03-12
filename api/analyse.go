@@ -39,6 +39,8 @@ func (api *RendererAPI) analyseData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setContentType(w, "application/json")
+
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bytes)
 	if err != nil {

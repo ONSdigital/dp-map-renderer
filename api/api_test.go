@@ -18,6 +18,7 @@ import (
 var (
 	host           = "http://localhost:80"
 	requestHTMLURL = host + "/render/html"
+	analyseURL = host + "/analyse"
 )
 
 var saveTestResponse = true
@@ -39,6 +40,25 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 		if saveTestResponse {
 			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)
+		}
+	})
+}
+
+func TestSuccessfullyAnalyseData(t *testing.T) {
+	t.Parallel()
+	Convey("Successfully analyse data and topology", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleAnalyseRequest(t))
+		r, err := http.NewRequest("POST", analyseURL, reader)
+		So(err, ShouldBeNil)
+
+		w := httptest.NewRecorder()
+		api := routes(mux.NewRouter())
+		api.router.ServeHTTP(w, r)
+		So(w.Code, ShouldEqual, http.StatusOK)
+		So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+
+		if saveTestResponse {
+			ioutil.WriteFile("../testdata/exampleAnalyseResponse.json", w.Body.Bytes(), 0644)
 		}
 	})
 }

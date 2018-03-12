@@ -48,7 +48,9 @@ func AnalyseData(request *models.AnalyseRequest) (*models.AnalyseResponse, error
 		breaks[i] = jenks.Round(breaks[i], values)
 	}
 
-	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue:values[0], MaxValue:values[len(values)-1]}, nil
+	classCount := bestFitClassCount(values, breaks)
+
+	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue:values[0], MaxValue:values[len(values)-1], BestFitClassCount:classCount}, nil
 }
 
 // extractValues extracts and sorts the values in rows.
@@ -154,4 +156,68 @@ type parseInfo struct {
 	rows []*models.DataRow
 	messages []*models.Message
 	totalRows int
+}
+
+// bestFitClassCount tries to find the breaks that best fit the data in the fewest classes.
+// This is purely a best guess suggestion
+func bestFitClassCount(data []float64, allBreaks [][]float64) int {
+
+	const classCountFactor = 0.2
+	goodnessFactor := 1.0 - classCountFactor
+
+	maxClasses := float64(len(allBreaks[len(allBreaks)-1]))
+	bestCount := 0
+	bestFitness := 0.0
+	for _, breaks := range allBreaks {
+		goodness := goodnessOfVarianceFit(data, breaks)
+		classFitness := 1.0 - (float64(len(breaks)) / maxClasses) // fewer classes are fitter
+		fitness := ( (goodness * goodnessFactor) + (classFitness * classCountFactor) ) / 2.0
+		if fitness > bestFitness {
+			bestCount = len(breaks)
+			bestFitness = fitness
+		}
+	}
+
+	return bestCount
+}
+
+// goodnessOfVarianceFit returns a value indicating how well the given breaks fit the data,
+// with 0 being no fit, and 1 being a perfect fit.
+// thanks to: https://stats.stackexchange.com/a/144075
+func goodnessOfVarianceFit(data []float64, classes []float64) float64 {
+	ssdData := sumOfSquaredDeviations(data)
+
+	// we need the upper bounds for classes
+	upperBounds := make([]float64, len(classes))
+	copy(upperBounds, classes[1:])
+	upperBounds[len(classes)-1] = data[len(data)-1] + 1.0
+
+	ssdClasses := []float64{}
+	remainingData := data
+	for _, ub := range upperBounds {
+		idx := sort.SearchFloat64s(remainingData, ub)
+		cls := remainingData[:idx]
+		remainingData = remainingData[idx:]
+		ssdClasses = append(ssdClasses, sumOfSquaredDeviations(cls))
+	}
+	ssdc := sum(ssdClasses)
+	return (ssdData - ssdc) / ssdData
+}
+
+func sum(data []float64)float64 {
+	sum := 0.0
+	for _, i := range data {
+		sum += i
+	}
+	return sum
+}
+
+func sumOfSquaredDeviations(data []float64) float64 {
+	mean := sum(data) / float64(len(data))
+
+	ssd := 0.0
+	for _, i := range data {
+		ssd += math.Pow(i - mean, 2)
+	}
+	return ssd
 }
