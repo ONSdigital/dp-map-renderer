@@ -40,11 +40,12 @@ type ScaleFunc func(float64, float64) (float64, float64)
 //
 // default attributes ()
 type SVG struct {
-	useProp    func(string) bool
-	padding    Padding
-	attributes map[string]string
-	elements   []*SVGElement
-	titleProp  string
+	useProp      func(string) bool
+	padding      Padding
+	attributes   map[string]string
+	elements     []*SVGElement
+	titleProp    string
+	pngConverter PNGConverter
 }
 
 // SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
@@ -60,6 +61,15 @@ type Padding struct{ Top, Right, Bottom, Left float64 }
 
 // An Option represents a single SVG option.
 type Option func(*SVG)
+
+// PNGConverter converts an svg file to png. Call either Convert or IncludeFallbackImage - there's no need to call both.
+type PNGConverter interface {
+	// Convert converts the given svg file to a base64-encoded png
+	Convert(svg []byte) ([]byte, error)
+	// IncludeFallbackImage generates an svg with the given attributes, content and a fallback image:
+	// <svg svgAttributes><switch><g>svgContent</g><foreignObject><image src="data:image/png;base64,..." /></foreignObject></svg>
+	IncludeFallbackImage(svgAttributes string, svgContent string) string
+}
 
 // New returns a new SVG that can be used to to draw geojson geometries,
 // features and featurecollections.
@@ -102,8 +112,12 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 		}
 	}
 
-	attributes := makeAttributes(svg.attributes)
-	return fmt.Sprintf(`<svg width="%g" height="%g"%s>%s%s</svg>`, width, height, attributes, content, newline)
+	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
+
+	if svg.pngConverter == nil {
+		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, content, newline)
+	}
+	return svg.pngConverter.IncludeFallbackImage(attributes, content.String())
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -150,6 +164,13 @@ func WithPadding(p Padding) Option {
 func WithTitles(titleProperty string) Option {
 	return func(svg *SVG) {
 		svg.titleProp = titleProperty
+	}
+}
+
+// WithPNGFallback configures the SVG to include a png image as a foreignObject fallback for browsers that don't support svg
+func WithPNGFallback(converter PNGConverter) Option {
+	return func(svg *SVG) {
+		svg.pngConverter = converter
 	}
 }
 
