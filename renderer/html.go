@@ -29,11 +29,6 @@ var (
 	footnoteHiddenText = "Footnote "
 )
 
-// TODO consider including a fallback base64-encoded png for the few browsers that don't support inline svg (IE8, Opera Mini, Android 2.3)
-// best option: http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
-// other possibilities: https://css-tricks.com/svg-fallbacks/
-//						https://stackoverflow.com/a/28239372
-
 // RenderHTML returns an HTML figure element with caption and footer, and a div with text that should be replaced by the SVG map
 func RenderHTML(request *models.RenderRequest) ([]byte, error) {
 

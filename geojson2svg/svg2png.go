@@ -76,7 +76,8 @@ func (exe *executablePNGConverter) Convert(svg []byte) ([]byte, error) {
 	return []byte(imgBase64Str), nil
 }
 
-// IncludeFallbackImage inserts a foreignObject with a fallback png image, if we have been configured with a PNGConverter.
+// IncludeFallbackImage inserts a foreignObject with a fallback png image.
+// thanks to http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
 func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, content string) string {
 	svgString := fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, content, newline)
 	png, err := exe.Convert([]byte(svgString))
