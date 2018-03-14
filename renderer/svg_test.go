@@ -41,7 +41,6 @@ func TestRenderSVGDoesNotIncludeFallbackPng(t *testing.T) {
 
 	Convey("Successfully render an svg map without fallback png", t, func() {
 
-		UsePNGConverter(nil)
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		renderRequest, err := models.CreateRenderRequest(reader)
 		if err != nil {
@@ -67,6 +66,7 @@ func TestRenderSVGIncludesFallbackPng(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.IncludeFallbackPng = true
 
 		result := RenderSVG(renderRequest)
 
@@ -203,8 +203,6 @@ func TestSVGContainsClassName(t *testing.T) {
 
 	Convey("simpleSVG should assign class to map regions", t, func() {
 
-		UsePNGConverter(nil)
-
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
@@ -225,7 +223,6 @@ func TestSVGContainsIDs(t *testing.T) {
 
 	Convey("simpleSVG should assign ids to map regions", t, func() {
 
-		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -246,7 +243,6 @@ func TestSVGContainsTitles(t *testing.T) {
 
 	Convey("simpleSVG should assign names as titles to map regions", t, func() {
 
-		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -268,7 +264,6 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions", t, func() {
 
-		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:   "testname",
@@ -292,7 +287,6 @@ func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
 
-		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -365,6 +359,7 @@ func TestRenderHorizontalKeyHasFallbackPng(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.IncludeFallbackPng = true
 
 		result := RenderHorizontalKey(renderRequest)
 
@@ -379,13 +374,12 @@ func TestRenderHorizontalKeyHasFallbackPng(t *testing.T) {
 func TestRenderHorizontalKeyDoesNotHaveFallbackPng(t *testing.T) {
 	Convey("RenderHorizontalKey should not render a fallback png", t, func() {
 
-		UsePNGConverter(nil)
-
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		renderRequest, err := models.CreateRenderRequest(reader)
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.IncludeFallbackPng = false
 
 		result := RenderHorizontalKey(renderRequest)
 
@@ -406,6 +400,7 @@ func TestRenderVerticalKeyHasFallbackPng(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.IncludeFallbackPng = true
 
 		result := RenderVerticalKey(renderRequest)
 
@@ -420,13 +415,12 @@ func TestRenderVerticalKeyHasFallbackPng(t *testing.T) {
 func TestRenderVerticalKeyDoesNotHaveFallbackPng(t *testing.T) {
 	Convey("RenderVerticalKey should not render a fallback png", t, func() {
 
-		UsePNGConverter(nil)
-
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		renderRequest, err := models.CreateRenderRequest(reader)
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.IncludeFallbackPng = false
 
 		result := RenderVerticalKey(renderRequest)
 

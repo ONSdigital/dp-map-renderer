@@ -47,12 +47,17 @@ func RenderSVG(request *models.RenderRequest) string {
 	svg := g2s.New()
 	svg.AppendFeatureCollection(geoJSON)
 
+	converter := pngConverter
+	if !request.IncludeFallbackPng {
+		converter = nil
+	}
+
 	width, height, vbHeight := getWidthAndHeight(request, svg)
 	return svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %g %g", width, vbHeight)),
-		g2s.WithPNGFallback(pngConverter))
+		g2s.WithPNGFallback(converter))
 }
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
@@ -214,7 +219,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	}
 	fmt.Fprintf(content, `%s</g>%s</g>%s`, "\n", "\n", "\n")
 
-	if pngConverter == nil {
+	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String())
@@ -263,7 +268,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	}
 	fmt.Fprintf(content, `%s</g>%s`, "\n", "\n")
 
-	if pngConverter == nil {
+	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String())

@@ -42,7 +42,6 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
 		So(w.Body.String(), ShouldContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "Non-UK born population, Great Britain, 2015")
-		So(w.Body.String(), ShouldContainSubstring, "<foreignObject>")
 		if saveTestResponse {
 			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)
