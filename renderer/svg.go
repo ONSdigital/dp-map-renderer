@@ -19,6 +19,13 @@ const RegionClassName = "mapRegion"
 // MissingDataText is the text appended to the title of a region that has missing data
 const MissingDataText = "data unavailable"
 
+var pngConverter g2s.PNGConverter
+
+// UsePNGConverter assigns a PNGConverter that will be used to generate fallback png images for svgs.
+func UsePNGConverter(p g2s.PNGConverter) {
+	pngConverter = p
+}
+
 type valueAndColour struct {
 	value  float64
 	colour string
@@ -40,11 +47,17 @@ func RenderSVG(request *models.RenderRequest) string {
 	svg := g2s.New()
 	svg.AppendFeatureCollection(geoJSON)
 
+	converter := pngConverter
+	if !request.IncludeFallbackPng {
+		converter = nil
+	}
+
 	width, height, vbHeight := getWidthAndHeight(request, svg)
 	return svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
-		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %g %g", width, vbHeight)))
+		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %g %g", width, vbHeight)),
+		g2s.WithPNGFallback(converter))
 }
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
@@ -183,7 +196,8 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	keyWidth := svgWidth * 0.9
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	fmt.Fprintf(content, `<svg id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90" viewBox="0 0 %g 90">`, request.Filename, svgWidth, svgWidth)
+	attributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90" viewBox="0 0 %g 90"`, request.Filename, svgWidth, svgWidth)
+
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
 	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, svgWidth*0.05)
@@ -203,8 +217,12 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	if len(request.Choropleth.MissingValueColor) > 0 {
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, 0.0, 55.0)
 	}
-	fmt.Fprintf(content, `%s</g>%s</g>%s</svg>`, "\n", "\n", "\n")
-	return content.String()
+	fmt.Fprintf(content, `%s</g>%s</g>%s`, "\n", "\n", "\n")
+
+	if pngConverter == nil || request.IncludeFallbackPng == false {
+		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
+	}
+	return pngConverter.IncludeFallbackImage(attributes, content.String())
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
@@ -224,7 +242,8 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	keyWidth := getVerticalKeyWidth(request, breaks)
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	fmt.Fprintf(content, `<svg id="%s-legend-vertical" class="map_key_vertical" height="%g" width="%g" viewBox="0 0 %g %g">`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
+	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%g" width="%g" viewBox="0 0 %g %g"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
+
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
 	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename, keyWidth/2, svgHeight*0.1)
@@ -247,8 +266,12 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 		xPos := (keyWidth - float64(getTextWidth(MissingDataText, 12))) / 2
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
 	}
-	fmt.Fprintf(content, `%s</g>%s</svg>`, "\n", "\n")
-	return content.String()
+	fmt.Fprintf(content, `%s</g>%s`, "\n", "\n")
+
+	if pngConverter == nil || request.IncludeFallbackPng == false {
+		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
+	}
+	return pngConverter.IncludeFallbackImage(attributes, content.String())
 }
 
 // getVerticalKeyWidth determines the approximate width required for the key

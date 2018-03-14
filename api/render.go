@@ -30,7 +30,7 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	renderType := vars["render_type"]
 
-	log.Debug("renderTable", log.Data{"headers": r.Header})
+	log.Debug("renderMap", log.Data{"headers": r.Header})
 	renderRequest, err := models.CreateRenderRequest(r.Body)
 	if err != nil {
 		log.Error(err, nil)
@@ -47,8 +47,11 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 	var bytes []byte
 
 	switch renderType {
-	case "html":
-		bytes, err = renderer.RenderHTML(renderRequest)
+	case "svg":
+		bytes, err = renderer.RenderHTMLWithSVG(renderRequest)
+		setContentType(w, contentHTML)
+	case "png":
+		bytes, err = renderer.RenderHTMLWithPNG(renderRequest)
 		setContentType(w, contentHTML)
 	default:
 		log.Error(errors.New("Unknown render type"), log.Data{"render_type": renderType})

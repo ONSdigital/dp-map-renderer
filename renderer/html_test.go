@@ -17,7 +17,7 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-func TestRenderHTML(t *testing.T) {
+func TestRenderHTMLWithSVG(t *testing.T) {
 
 	Convey("Successfully render an html map", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
@@ -26,10 +26,13 @@ func TestRenderHTML(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+
+		svg := FindNode(container, atom.Svg)
+		So(svg, ShouldNotBeNil)
 
 		// the footer - source
 		footer := FindNode(container, atom.Footer)
@@ -40,6 +43,72 @@ func TestRenderHTML(t *testing.T) {
 		So(notes.FirstChild.Data, ShouldResemble, "Notes")
 		footnotes := FindNodes(footer, atom.Li)
 		So(len(footnotes), ShouldEqual, len(renderRequest.Footnotes))
+
+	})
+}
+
+func TestRenderHTMLWithPNG(t *testing.T) {
+
+	Convey("Successfully render a png image of the map", t, func() {
+
+		renderer.UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		container, html := invokeRenderHTMLWithPNG(renderRequest)
+
+		fmt.Println(html)
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+
+		svg := FindNode(container, atom.Svg)
+		So(svg, ShouldBeNil)
+
+		img := FindNode(container, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		// the footer - source
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		// footnotes
+		notes := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__notes"})
+		So(notes, ShouldNotBeNil)
+		So(notes.FirstChild.Data, ShouldResemble, "Notes")
+		footnotes := FindNodes(footer, atom.Li)
+		So(len(footnotes), ShouldEqual, len(renderRequest.Footnotes))
+
+	})
+}
+
+func TestRenderHTMLWithPNG_ConverterNotAvailable(t *testing.T) {
+
+	Convey("Return the svg version when a png converter is not available", t, func() {
+
+		renderer.UsePNGConverter(nil)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.IncludeFallbackPng = false
+
+		container, _ := invokeRenderHTMLWithPNG(renderRequest)
+
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+
+		svg := FindNode(container, atom.Svg)
+		So(svg, ShouldNotBeNil)
+
+		img := FindNode(container, atom.Image)
+		So(img, ShouldBeNil)
 
 	})
 }
@@ -55,7 +124,7 @@ func TestRenderHTML_HorizontalLegend(t *testing.T) {
 		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
 		renderRequest.Choropleth.VerticalLegendPosition = ""
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -77,7 +146,7 @@ func TestRenderHTML_HorizontalLegend(t *testing.T) {
 		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionAfter
 		renderRequest.Choropleth.VerticalLegendPosition = ""
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -102,7 +171,7 @@ func TestRenderHTML_VerticalLegend(t *testing.T) {
 		renderRequest.Choropleth.HorizontalLegendPosition = ""
 		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -124,7 +193,7 @@ func TestRenderHTML_VerticalLegend(t *testing.T) {
 		renderRequest.Choropleth.HorizontalLegendPosition = ""
 		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionAfter
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -149,7 +218,7 @@ func TestRenderHTML_BothLegends(t *testing.T) {
 		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
 		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -173,7 +242,7 @@ func TestRenderHTMLWithNoSVG(t *testing.T) {
 			Footnotes: []string{"Note1", "Note2"},
 		}
 
-		container, _ := invokeRenderHTML(renderRequest)
+		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 
@@ -197,7 +266,7 @@ func TestRenderHTML_Source(t *testing.T) {
 
 	Convey("A renderRequest without a source should not have a source paragraph", t, func() {
 		request := models.RenderRequest{Filename: "myId"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -206,7 +275,7 @@ func TestRenderHTML_Source(t *testing.T) {
 
 	Convey("A renderRequest with a source should have a source paragraph", t, func() {
 		request := models.RenderRequest{Filename: "myId", Source: "mySource"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -217,7 +286,7 @@ func TestRenderHTML_Source(t *testing.T) {
 
 	Convey("A renderRequest with a source link should have a source paragraph with anchor link", t, func() {
 		request := models.RenderRequest{Filename: "myId", Source: "mySource", SourceLink: "http://foo/bar"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -233,7 +302,7 @@ func TestRenderHTML_Licence(t *testing.T) {
 
 	Convey("A renderRequest without a licence should not have a licence paragraph", t, func() {
 		request := models.RenderRequest{Filename: "myId"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -242,7 +311,7 @@ func TestRenderHTML_Licence(t *testing.T) {
 
 	Convey("A renderRequest with a licence should have a licence paragraph", t, func() {
 		request := models.RenderRequest{Filename: "myId", Licence: "© Crown copyright 2015"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -255,7 +324,7 @@ func TestRenderHTML_Licence(t *testing.T) {
 func TestRenderHTML_Footer(t *testing.T) {
 	Convey("A renderRequest without footnotes should not have notes paragraph", t, func() {
 		request := models.RenderRequest{Filename: "myId"}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -266,7 +335,7 @@ func TestRenderHTML_Footer(t *testing.T) {
 
 	Convey("Footnotes should render as li elements with id", t, func() {
 		request := models.RenderRequest{Filename: "myId", Footnotes: []string{"Note1", "Note2"}}
-		container, _ := invokeRenderHTML(&request)
+		container, _ := invokeRenderHTMLWithSVG(&request)
 
 		footer := FindNode(container, atom.Footer)
 		So(footer, ShouldNotBeNil)
@@ -289,14 +358,30 @@ func TestRenderHTML_Footer(t *testing.T) {
 
 	Convey("Footnotes should be properly parsed", t, func() {
 		request := models.RenderRequest{Filename: "myId", Footnotes: []string{"Note1", "Note2\nOn Two Lines"}}
-		_, result := invokeRenderHTML(&request)
+		_, result := invokeRenderHTMLWithSVG(&request)
 
 		So(result, ShouldContainSubstring, "Note2<br/>On Two Lines")
 	})
 }
 
-func invokeRenderHTML(renderRequest *models.RenderRequest) (*html.Node, string) {
-	response, err := renderer.RenderHTML(renderRequest)
+func invokeRenderHTMLWithSVG(renderRequest *models.RenderRequest) (*html.Node, string) {
+	response, err := renderer.RenderHTMLWithSVG(renderRequest)
+	So(err, ShouldBeNil)
+	nodes, err := html.ParseFragment(bytes.NewReader([]byte(response)), &html.Node{
+		Type:     html.ElementNode,
+		Data:     "body",
+		DataAtom: atom.Body,
+	})
+	So(err, ShouldBeNil)
+	So(len(nodes), ShouldBeGreaterThanOrEqualTo, 1)
+	// the containing container
+	node := nodes[0]
+	So(node.DataAtom, ShouldEqual, atom.Figure)
+	return node, string(response)
+}
+
+func invokeRenderHTMLWithPNG(renderRequest *models.RenderRequest) (*html.Node, string) {
+	response, err := renderer.RenderHTMLWithPNG(renderRequest)
 	So(err, ShouldBeNil)
 	nodes, err := html.ParseFragment(bytes.NewReader([]byte(response)), &html.Node{
 		Type:     html.ElementNode,
