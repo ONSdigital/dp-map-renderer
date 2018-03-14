@@ -10,6 +10,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/api"
 	"github.com/ONSdigital/dp-map-renderer/config"
 	"github.com/ONSdigital/go-ns/log"
+	"github.com/ONSdigital/dp-map-renderer/renderer"
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
 
 func main() {
@@ -27,6 +29,8 @@ func main() {
 	cfg.Log()
 
 	apiErrors := make(chan error, 1)
+
+	renderer.UsePNGConverter(geojson2svg.NewPNGConverter(cfg.SVG2PNGExecutable, cfg.SVG2PNGArguments))
 
 	api.CreateRendererAPI(cfg.BindAddr, cfg.CORSAllowedOrigins, apiErrors)
 

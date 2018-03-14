@@ -15,7 +15,11 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/rubenv/topojson"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
+
+var pngConverter = geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
+var expectedFallbackImage = `<img alt="Fallback map image for older browsers" src="data:image/png;base64,dGVzdAo=" />`
 
 func TestRenderSVG(t *testing.T) {
 
@@ -30,6 +34,46 @@ func TestRenderSVG(t *testing.T) {
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg width="400" height="748" viewBox="0 0 400 748">`)
+	})
+}
+
+func TestRenderSVGDoesNotIncludeFallbackPng(t *testing.T) {
+
+	Convey("Successfully render an svg map without fallback png", t, func() {
+
+		UsePNGConverter(nil)
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderSVG(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg `)
+		So(result, ShouldNotContainSubstring, `<foreignObject>`)
+	})
+}
+
+func TestRenderSVGIncludesFallbackPng(t *testing.T) {
+
+	Convey("Successfully render an svg map with fallback png", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderSVG(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg `)
+		So(result, ShouldContainSubstring, `<foreignObject>`)
+		So(result, ShouldContainSubstring, expectedFallbackImage)
 	})
 }
 
@@ -159,6 +203,8 @@ func TestSVGContainsClassName(t *testing.T) {
 
 	Convey("simpleSVG should assign class to map regions", t, func() {
 
+		UsePNGConverter(nil)
+
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
@@ -179,6 +225,8 @@ func TestSVGContainsIDs(t *testing.T) {
 
 	Convey("simpleSVG should assign ids to map regions", t, func() {
 
+		UsePNGConverter(nil)
+
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
@@ -197,6 +245,8 @@ func TestSVGContainsIDs(t *testing.T) {
 func TestSVGContainsTitles(t *testing.T) {
 
 	Convey("simpleSVG should assign names as titles to map regions", t, func() {
+
+		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -217,6 +267,8 @@ func TestSVGContainsTitles(t *testing.T) {
 func TestSVGContainsChoroplethColours(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions", t, func() {
+
+		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:   "testname",
@@ -239,6 +291,8 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
+
+		UsePNGConverter(nil)
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -297,6 +351,89 @@ func TestRenderHorizontalKey(t *testing.T) {
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
 		assertKeyContents(result, renderRequest)
+	})
+
+}
+
+func TestRenderHorizontalKeyHasFallbackPng(t *testing.T) {
+	Convey("RenderHorizontalKey should render a fallback png", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `<foreignObject>`)
+		So(result, ShouldContainSubstring, expectedFallbackImage)
+
+	})
+
+}
+
+func TestRenderHorizontalKeyDoesNotHaveFallbackPng(t *testing.T) {
+	Convey("RenderHorizontalKey should not render a fallback png", t, func() {
+
+		UsePNGConverter(nil)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg `)
+		So(result, ShouldNotContainSubstring, `<foreignObject>`)
+
+	})
+
+}
+func TestRenderVerticalKeyHasFallbackPng(t *testing.T) {
+	Convey("RenderVerticalKey should render a fallback png", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderVerticalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `<foreignObject>`)
+		So(result, ShouldContainSubstring, expectedFallbackImage)
+
+	})
+
+}
+
+func TestRenderVerticalKeyDoesNotHaveFallbackPng(t *testing.T) {
+	Convey("RenderVerticalKey should not render a fallback png", t, func() {
+
+		UsePNGConverter(nil)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := RenderVerticalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg `)
+		So(result, ShouldNotContainSubstring, `<foreignObject>`)
+
 	})
 
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/ONSdigital/dp-map-renderer/renderer"
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
 
 var (
@@ -26,6 +28,9 @@ var saveTestResponse = true
 func TestSuccessfullyRenderMap(t *testing.T) {
 	t.Parallel()
 	Convey("Successfully render an html map", t, func() {
+
+		renderer.UsePNGConverter(geojson2svg.NewPNGConverter("sh", []string{"-c", "cat testdata/fallback.png >> " + geojson2svg.ArgPNGFilename}))
+
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		r, err := http.NewRequest("POST", requestHTMLURL, reader)
 		So(err, ShouldBeNil)
@@ -37,6 +42,7 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
 		So(w.Body.String(), ShouldContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "Non-UK born population, Great Britain, 2015")
+		So(w.Body.String(), ShouldContainSubstring, "<foreignObject>")
 		if saveTestResponse {
 			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)

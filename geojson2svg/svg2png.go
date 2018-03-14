@@ -25,9 +25,10 @@ type executablePNGConverter struct {
 	Arguments  []string
 }
 
-// NewPNGConverter creates a new PNGConverter that invokes an executable to perform the conversion
-// executable is the path to the executable to invoke to convert an svg to png
-// arguments are the arguments passed to the executable. These should include:
+// NewPNGConverter creates a new PNGConverter that invokes an executable to perform the conversion.
+// Parameters:
+// executable - the path to the executable that converts an svg to png.
+// arguments - the arguments passed to the executable. These should include:
 // 		geojson2svg.ArgSVGFilename as the name of the svg file to convert
 // 		geojson2svg.ArgPNGFilename as the name of the png file to create
 func NewPNGConverter(executable string, arguments []string) PNGConverter {
@@ -81,7 +82,7 @@ func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, conte
 	png, err := exe.Convert([]byte(svgString))
 	pngString := "<p>Unsupported Browser</p>"
 	if err == nil {
-		pngString = fmt.Sprintf(`<img alt="Fallback map image for older browsers" src="data:image/png;base64,%s" /></foreignObject>`, string(png))
+		pngString = fmt.Sprintf(`<img alt="Fallback map image for older browsers" src="data:image/png;base64,%s" />`, string(png))
 	} else {
 		log.Error(err, log.Data{"_message": "Unable to include fallback png"})
 	}
@@ -89,8 +90,7 @@ func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, conte
 	return svgString
 }
 
-const svgSwitchTemplate = `
-<svg %s>
+const svgSwitchTemplate = `<svg %s>
 	<switch>
 		<g>
 %s
