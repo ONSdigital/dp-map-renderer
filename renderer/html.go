@@ -29,25 +29,32 @@ var (
 	footnoteHiddenText = "Footnote "
 )
 
-// RenderHTML returns an HTML figure element with caption and footer, and a div with text that should be replaced by the SVG map
-func RenderHTML(request *models.RenderRequest) ([]byte, error) {
+// RenderHTMLWithSVG returns an HTML figure element with caption and footer, and an SVG version of the map and (optional) legend
+func RenderHTMLWithSVG(request *models.RenderRequest) ([]byte, error) {
+	s := renderHTML(request)
+	result := renderSVGs(request, s)
+	return []byte(result), nil
+}
 
+// RenderHTMLWithPNG returns an HTML figure element with caption and footer, and a PNG version of the map and (optional) legend
+func RenderHTMLWithPNG(request *models.RenderRequest) ([]byte, error) {
+	request.IncludeFallbackPng = false
+	s := renderHTML(request)
+	result := renderPNGs(request, s)
+	return []byte(result), nil
+}
+
+// renderHTML returns an HTML figure element with caption and footer, and divs with placeholder text for the map and legend
+func renderHTML(request *models.RenderRequest) string {
 	figure := createFigure(request)
-
 	svgContainer := h.CreateNode("div", atom.Div, h.Attr("class", "map_container"))
 	figure.AppendChild(svgContainer)
-
 	addSVGDivs(request, svgContainer)
-
 	addFooter(request, figure)
-
 	var buf bytes.Buffer
 	html.Render(&buf, figure)
 	buf.WriteString("\n")
-
-	result := renderSVGs(request, buf.String())
-
-	return []byte(result), nil
+	return buf.String()
 }
 
 // createFigure creates a figure element and adds a caption with the title and subtitle
@@ -168,6 +175,42 @@ func renderSVGs(request *models.RenderRequest, original string) string {
 		result = strings.Replace(result, horizontalKeyReplacementText, RenderHorizontalKey(request), 1)
 	}
 	return result
+}
+
+// renderPNGs replaces the SVG marker text with png images
+func renderPNGs(request *models.RenderRequest, original string) string {
+	svg := RenderSVG(request)
+	result := strings.Replace(original, svgReplacementText, renderPNG(svg), 1)
+	if strings.Contains(result, verticalKeyReplacementText) {
+		key := RenderVerticalKey(request)
+		result = strings.Replace(result, verticalKeyReplacementText, renderPNG(key), 1)
+	}
+	if strings.Contains(result, horizontalKeyReplacementText) {
+		key := RenderHorizontalKey(request)
+		result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
+	}
+	return result
+}
+
+var widthPattern = regexp.MustCompile(`width="[^"]*"`)
+var heightPattern = regexp.MustCompile(`height="[^"]+"`)
+
+// renderPNG converts the given svg to a png, retaining the width and height attributes
+func renderPNG(svg string) string {
+	if pngConverter == nil {
+		log.Error(fmt.Errorf("pngConverter is nil - cannot convert svg to png"), nil)
+		return svg
+	}
+	png := svg
+	b64, err := pngConverter.Convert([]byte(svg))
+	if err == nil {
+		width := widthPattern.FindString(svg)
+		height := heightPattern.FindString(svg)
+		png = fmt.Sprintf(`<img %s %s src="data:image/png;base64,%s" />`, width, height, string(b64))
+	} else {
+		log.Error(err, log.Data{"_message": "Unable to convert svg to png"})
+	}
+	return png
 }
 
 // Parses the string to replace \n with <br /> and wrap [1] with a link to the footnote
