@@ -12,10 +12,10 @@ Renders an SVG representation of a choropleth map given a topojson file and data
 
 ### Endpoints
 
-| url                   | Method | Parameter values     | Description                                                                                                                                                                                                                                       |
-| ---                   | ------ | ----------------     | -----------                                                                                                                                                                                                                                       |
-| /render/{render_type} | POST   | render_type = `html` | Renders the (json) data provided in the post body as an html figure with svg content                                                                                                                                                              |
-| /analyse              | POST   |                      | Accepts json containing a topojson topology and a string representation of a csv file. Validates that the csv file matches the topology and returns the contents of the csv in json format. Also identifies natural breaks for the choropleth map |
+| url                   | Method | Parameter values             | Description                                                                                                                                                                                                                                       |
+| ---                   | ------ | ----------------             | -----------                                                                                                                                                                                                                                       |
+| /render/{render_type} | POST   | render_type = `svg` or `png` | Renders the (json) data provided in the post body as an html figure with either svg or png map                                                                                                                                                    |
+| /analyse              | POST   |                              | Accepts json containing a topojson topology and a string representation of a csv file. Validates that the csv file matches the topology and returns the contents of the csv in json format. Also identifies natural breaks for the choropleth map |
 
 ### Healthchecking
 
