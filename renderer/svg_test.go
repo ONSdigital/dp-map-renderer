@@ -10,12 +10,12 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	. "github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/rubenv/topojson"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
 
 var pngConverter = geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
@@ -223,7 +223,6 @@ func TestSVGContainsIDs(t *testing.T) {
 
 	Convey("simpleSVG should assign ids to map regions", t, func() {
 
-
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
@@ -242,7 +241,6 @@ func TestSVGContainsIDs(t *testing.T) {
 func TestSVGContainsTitles(t *testing.T) {
 
 	Convey("simpleSVG should assign names as titles to map regions", t, func() {
-
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
@@ -263,7 +261,6 @@ func TestSVGContainsTitles(t *testing.T) {
 func TestSVGContainsChoroplethColours(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions", t, func() {
-
 
 		renderRequest := &models.RenderRequest{
 			Filename:   "testname",
@@ -286,7 +283,6 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
-
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",

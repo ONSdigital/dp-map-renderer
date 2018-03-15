@@ -127,7 +127,7 @@ func TestValidateAnalyseRequestRejectsMissingFields(t *testing.T) {
 	})
 
 	Convey("When an analyse request has missing geography fields, an error is returned", t, func() {
-		request := AnalyseRequest{Geography:&Geography{}, CSV:"foo,bar"}
+		request := AnalyseRequest{Geography: &Geography{}, CSV: "foo,bar"}
 		err := request.ValidateAnalyseRequest()
 		So(err, ShouldNotBeNil)
 		So(err.Error(), ShouldContainSubstring, "Missing mandatory field(s)")

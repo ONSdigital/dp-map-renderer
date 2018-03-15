@@ -9,9 +9,9 @@ import (
 
 	"github.com/ONSdigital/dp-map-renderer/api"
 	"github.com/ONSdigital/dp-map-renderer/config"
-	"github.com/ONSdigital/go-ns/log"
-	"github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
+	"github.com/ONSdigital/dp-map-renderer/renderer"
+	"github.com/ONSdigital/go-ns/log"
 )
 
 func main() {

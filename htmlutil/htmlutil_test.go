@@ -330,7 +330,7 @@ func TestGetApproximateTextWidth(t *testing.T) {
 		result := GetApproximateTextWidth(text, 8)
 		So(int(result), ShouldEqual, 158)
 
-		})
+	})
 }
 
 func TestGetApproximateTextWidthUsesDefaultForUnknownCharacters(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"sort"
 
 	g2s "github.com/ONSdigital/dp-map-renderer/geojson2svg"
+	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
-	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 )
 
 // RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
@@ -298,7 +298,6 @@ func getTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float6
 	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
 	return maxTick + math.Max(refTick, refValue) + 36.0
 }
-
 
 func writeKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)

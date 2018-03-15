@@ -1,15 +1,16 @@
 package geojson2svg
 
 import (
-	"io/ioutil"
-	"math/rand"
-	"os"
-	"github.com/ONSdigital/go-ns/log"
-	"os/exec"
-	"strings"
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/ONSdigital/go-ns/log"
 )
 
 const (

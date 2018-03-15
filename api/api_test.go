@@ -10,11 +10,11 @@ import (
 
 	"bytes"
 
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
+	"github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/ONSdigital/dp-map-renderer/renderer"
-	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 )
 
 var (

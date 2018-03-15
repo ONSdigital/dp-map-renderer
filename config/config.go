@@ -3,9 +3,10 @@ package config
 import (
 	"time"
 
+	"strings"
+
 	"github.com/ONSdigital/go-ns/log"
 	"github.com/kelseyhightower/envconfig"
-	"strings"
 )
 
 // Config is the configuration for this service

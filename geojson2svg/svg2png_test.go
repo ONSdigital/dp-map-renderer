@@ -1,10 +1,11 @@
 package geojson2svg_test
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"encoding/base64"
+	"testing"
+
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func Test_ConvertShouldFailWhenExecutableDoesNotExist(t *testing.T) {
