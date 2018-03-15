@@ -39,6 +39,7 @@ type RenderRequest struct {
 	Width              float64     `json:"width,omitempty"`
 	Height             float64     `json:"height,omitempty"`
 	IncludeFallbackPng bool        `json:"include_fallback_png"`
+	FontSize           int         `json:"font_size"`
 }
 
 // Geography holds the topojson topology and supporting information

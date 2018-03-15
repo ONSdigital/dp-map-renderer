@@ -6,11 +6,10 @@ import (
 	"math"
 	"sort"
 
-	"regexp"
-
 	g2s "github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
+	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 )
 
 // RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
@@ -56,7 +55,7 @@ func RenderSVG(request *models.RenderRequest) string {
 	return svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
-		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %g %g", width, vbHeight)),
+		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
 		g2s.WithPNGFallback(converter))
 }
 
@@ -196,7 +195,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	keyWidth := svgWidth * 0.9
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	attributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%g" height="90" viewBox="0 0 %g 90"`, request.Filename, svgWidth, svgWidth)
+	attributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
 	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
@@ -242,7 +241,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	keyWidth := getVerticalKeyWidth(request, breaks)
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%g" width="%g" viewBox="0 0 %g %g"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
+	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 
 	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
 	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
@@ -263,7 +262,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	fmt.Fprint(content, ticks.String())
 	fmt.Fprintf(content, `%s</g>`, "\n")
 	if len(request.Choropleth.MissingValueColor) > 0 {
-		xPos := (keyWidth - float64(getTextWidth(MissingDataText, 12))) / 2
+		xPos := (keyWidth - float64((htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12))) / 2
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
 	}
 	fmt.Fprintf(content, `%s</g>%s`, "\n", "\n")
@@ -276,45 +275,30 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 
 // getVerticalKeyWidth determines the approximate width required for the key
 func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
-	missingWidth := getTextWidth(MissingDataText, 12)
-	titleWidth := getTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
+	missingWidth := htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12
+	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
 	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
 	return math.Max(maxWidth, getTickTextWidth(request, breaks)) + 10
 }
 
 // getTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
 func getTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
-	maxTick := 0
+	maxTick := 0.0
 	for _, b := range breaks {
-		lbound := getTextWidth(fmt.Sprintf("%g", b.LowerBound), 0)
+		lbound := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", b.LowerBound), request.FontSize)
 		if lbound > maxTick {
 			maxTick = lbound
 		}
-		ubound := getTextWidth(fmt.Sprintf("%g", b.UpperBound), 0)
+		ubound := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", b.UpperBound), request.FontSize)
 		if ubound > maxTick {
 			maxTick = ubound
 		}
 	}
-	refTick := getTextWidth(request.Choropleth.ReferenceValueText, 0)
-	refValue := getTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
-	return float64(maxTick) + math.Max(float64(refTick), float64(refValue)) + 36
+	refTick := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, 0)
+	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
+	return maxTick + math.Max(refTick, refValue) + 36.0
 }
 
-var narrowChars = regexp.MustCompile(`[1ijlt;:,.'!]`)
-var medChars = regexp.MustCompile(`[abcdefghknoprsuvxyz ]`)
-
-// getTextWidth determines the (approximate) width required to display the given text
-// this method gives a very rough approximation. To do better would involve generating an image and measuring its width - requiring an external tool such as inkscape or image magick
-func getTextWidth(text string, margin int) int {
-	const emWidth = 11
-	const medWidth = 9
-	const narrowWidth = 4
-	length := len(text)
-	narrow := length - len(narrowChars.ReplaceAllLiteralString(text, ""))
-	med := length - len(medChars.ReplaceAllLiteralString(text, ""))
-	wide := length - narrow - med
-	return wide*emWidth + narrow*narrowWidth + med*medWidth + margin
-}
 
 func writeKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)

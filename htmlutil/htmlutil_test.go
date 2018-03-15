@@ -312,3 +312,41 @@ func TestGetText(t *testing.T) {
 		So(result, ShouldEqual, "hello world!")
 	})
 }
+
+func TestGetApproximateTextWidth(t *testing.T) {
+	text := "The quick brown fox jumps over the lazy dog"
+
+	Convey("GetApproximateTextWidth should return the correct width at 14px", t, func() {
+		result := GetApproximateTextWidth(text, 14)
+		So(int(result), ShouldEqual, 278)
+	})
+
+	Convey("GetApproximateTextWidth should return the correct width at 16px", t, func() {
+		result := GetApproximateTextWidth(text, 16)
+		So(int(result), ShouldEqual, 317)
+	})
+
+	Convey("GetApproximateTextWidth should return the correct width at 8px", t, func() {
+		result := GetApproximateTextWidth(text, 8)
+		So(int(result), ShouldEqual, 158)
+
+		})
+}
+
+func TestGetApproximateTextWidthUsesDefaultForUnknownCharacters(t *testing.T) {
+	text := "日本語ṳéÁÈṑ"
+
+	Convey("GetApproximateTextWidth should return the correct width at 14px", t, func() {
+		result := GetApproximateTextWidth(text, 14)
+		So(int(result), ShouldEqual, 92)
+	})
+}
+
+func TestGetApproximateTextWidthUsesDefaultFontSize(t *testing.T) {
+	text := "The quick brown fox jumps over the lazy dog"
+
+	Convey("GetApproximateTextWidth should return the correct width at default font size", t, func() {
+		result := GetApproximateTextWidth(text, 0)
+		So(int(result), ShouldEqual, 278)
+	})
+}

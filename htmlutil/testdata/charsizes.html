@@ -1,0 +1,53 @@
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: "Open Sans", Helvetica, Arial, sans-serif;
+            font-weight: 400;
+        }
+    </style>
+</head>
+
+<body id="body">
+<script>
+    var fontSize = 14;
+    document.getElementById("body").setAttribute("style", "font-size:" + fontSize + "px")
+    var characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-=[];'#,./\\!\"£$%^&*()_+{}:@~<>? "
+    appendSpan("var characterWidths = map[rune]float64{", '', '', true);
+    for (var i = 0; i < characters.length; i++) {
+        appendSpan("'")
+        appendSpan(characters.charAt(i), "char_" + i, "inline-block")
+        width = document.getElementById("char_" + i).offsetWidth;
+        appendSpan("': "+ (width/fontSize).toFixed(3) + ",", '', '', true)
+    }
+
+    appendSpan("}")
+    function appendSpan(text, id, display, newLine) {
+        var span = document.createElement("span");
+        if (id) {
+            span.setAttribute("id", id);
+        }
+        if (display) {
+            span.style.display = display;
+        }
+        if (text == ' ') {
+            span.innerHTML = '&nbsp;'
+        } else {
+            var t = document.createTextNode(text);
+            span.appendChild(t);
+        }
+        document.body.appendChild(span);
+        if (newLine) {
+            document.body.appendChild(document.createElement("br"));
+        }
+    }
+</script>
+<br/>
+<span style="display: inline-block; font-size: 14px">The quick brown fox jumps over the lazy dog</span>
+<span style="display: inline-block; font-size: 16px">The quick brown fox jumps over the lazy dog</span>
+<span style="display: inline-block; font-size: 8px">The quick brown fox jumps over the lazy dog</span>
+<span style="display: inline-block; font-size: 14px">日本語ṳéÁÈṑ</span>
+</body>
+
+</html>
