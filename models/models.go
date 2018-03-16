@@ -9,6 +9,8 @@ import (
 
 	"github.com/ONSdigital/go-ns/log"
 	"github.com/rubenv/topojson"
+	"time"
+	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 // A list of errors returned from package
@@ -101,6 +103,8 @@ type Message struct {
 
 // CreateRenderRequest manages the creation of a RenderRequest from a reader
 func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
+	defer health.TrackTime(time.Now(), "models.CreateRenderRequest")
+
 	bytes, err := ioutil.ReadAll(reader)
 	if err != nil {
 		log.Error(err, log.Data{"request_body": string(bytes)})
@@ -124,6 +128,7 @@ func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
 
 // ValidateRenderRequest checks the content of the request structure
 func (r *RenderRequest) ValidateRenderRequest() error {
+	defer health.TrackTime(time.Now(), "models.ValidateRenderRequest")
 
 	var missingFields []string
 

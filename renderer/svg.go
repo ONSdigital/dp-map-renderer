@@ -10,6 +10,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
+	"time"
+	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 // RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
@@ -32,6 +34,7 @@ type valueAndColour struct {
 
 // RenderSVG generates an SVG map for the given request
 func RenderSVG(request *models.RenderRequest) string {
+	defer health.TrackTime(time.Now(), "renderer.RenderSVG")
 
 	geoJSON := getGeoJSON(request)
 	if geoJSON == nil {
@@ -61,6 +64,7 @@ func RenderSVG(request *models.RenderRequest) string {
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
 func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
+	defer health.TrackTime(time.Now(), "renderer.getGeoJSON")
 	// sanity check
 	if request.Geography == nil ||
 		request.Geography.Topojson == nil ||
@@ -183,6 +187,7 @@ func sortBreaks(breaks []*models.ChoroplethBreak, asc bool) []*models.Choropleth
 
 // RenderHorizontalKey creates an SVG containing a horizontally-oriented key for the choropleth
 func RenderHorizontalKey(request *models.RenderRequest) string {
+	defer health.TrackTime(time.Now(), "renderer.RenderHorizontalKey")
 
 	geoJSON := getGeoJSON(request)
 	if geoJSON == nil {
@@ -229,6 +234,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
 // TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
 func RenderVerticalKey(request *models.RenderRequest) string {
+	defer health.TrackTime(time.Now(), "renderer.RenderVerticalKey")
 
 	geoJSON := getGeoJSON(request)
 	if geoJSON == nil {

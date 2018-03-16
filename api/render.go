@@ -9,6 +9,8 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/go-ns/log"
 	"github.com/gorilla/mux"
+	"time"
+	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 // Error types
@@ -26,6 +28,8 @@ var (
 )
 
 func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
+	defer health.LogTime()
+	defer health.TrackTime(time.Now(), "api.renderMap")
 
 	vars := mux.Vars(r)
 	renderType := vars["render_type"]

@@ -13,6 +13,8 @@ import (
 	"github.com/ONSdigital/go-ns/log"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"time"
+	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 const (
@@ -36,6 +38,7 @@ var (
 
 // RenderHTMLWithSVG returns an HTML figure element with caption and footer, and an SVG version of the map and (optional) legend
 func RenderHTMLWithSVG(request *models.RenderRequest) ([]byte, error) {
+	defer health.TrackTime(time.Now(), "renderer.RenderHTMLWithSVG")
 	s := renderHTML(request)
 	result := renderSVGs(request, s)
 	return []byte(result), nil
@@ -51,6 +54,7 @@ func RenderHTMLWithPNG(request *models.RenderRequest) ([]byte, error) {
 
 // renderHTML returns an HTML figure element with caption and footer, and divs with placeholder text for the map and legend
 func renderHTML(request *models.RenderRequest) string {
+	defer health.TrackTime(time.Now(), "renderer.renderHTML")
 	figure := createFigure(request)
 	svgContainer := h.CreateNode("div", atom.Div, h.Attr("class", "map_container"))
 	figure.AppendChild(svgContainer)
@@ -172,6 +176,7 @@ func addFooterItemsToList(request *models.RenderRequest, ol *html.Node) {
 
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
 func renderSVGs(request *models.RenderRequest, original string) string {
+	defer health.TrackTime(time.Now(), "renderer.renderSVGs")
 	result := strings.Replace(original, svgReplacementText, RenderSVG(request), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
 		result = strings.Replace(result, verticalKeyReplacementText, RenderVerticalKey(request), 1)
@@ -184,6 +189,7 @@ func renderSVGs(request *models.RenderRequest, original string) string {
 
 // renderPNGs replaces the SVG marker text with png images
 func renderPNGs(request *models.RenderRequest, original string) string {
+	defer health.TrackTime(time.Now(), "renderer.renderPNGs")
 	svg := RenderSVG(request)
 	result := strings.Replace(original, svgReplacementText, renderPNG(svg), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
@@ -199,6 +205,7 @@ func renderPNGs(request *models.RenderRequest, original string) string {
 
 // renderPNG converts the given svg to a png, retaining the width and height attributes
 func renderPNG(svg string) string {
+	defer health.TrackTime(time.Now(), "renderer.renderPNG")
 	if pngConverter == nil {
 		log.Error(fmt.Errorf("pngConverter is nil - cannot convert svg to png"), nil)
 		return svg
