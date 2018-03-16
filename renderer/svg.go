@@ -121,6 +121,8 @@ func appendProperty(feature *geojson.Feature, propertyName string, value string)
 	feature.Properties[propertyName] = s
 }
 
+// setChoroplethColoursAndTitles creates a mapping from the id of a data row to its value and colour,
+// then iterates through the features assigning a title and style for the colour.
 func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.RenderRequest, idPrefix string) {
 	choropleth := request.Choropleth
 	if choropleth == nil || request.Data == nil {
@@ -197,7 +199,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", svgWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	writeHorizontalKeyTitle(request, svgWidth, content)
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, keyInfo.keyX)
 	left := 0.0
 	breaks := keyInfo.breaks
@@ -205,12 +207,12 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 		width := breaks[i].RelativeSize * keyInfo.keyWidth
 		fmt.Fprintf(content, `%s<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", width, left, breaks[i].Colour)
 		fmt.Fprintf(content, `</rect>`)
-		writeKeyTick(ticks, left, breaks[i].LowerBound)
+		writeHorizontalKeyTick(ticks, left, breaks[i].LowerBound)
 		left += width
 	}
-	writeKeyTick(ticks, left, breaks[len(breaks)-1].UpperBound)
+	writeHorizontalKeyTick(ticks, left, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeHKeyRefTick(ticks, keyInfo, svgWidth)
+		writeHorizontalKeyRefTick(ticks, keyInfo, svgWidth)
 	}
 	fmt.Fprint(content, ticks.String())
 	if len(request.Choropleth.MissingValueColor) > 0 {
@@ -225,6 +227,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
+// TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
 func RenderVerticalKey(request *models.RenderRequest) string {
 
 	geoJSON := getGeoJSON(request)
@@ -257,7 +260,7 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	}
 	writeVerticalKeyTick(ticks, keyHeight-position, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeVerticalKeyReferenceTick(ticks, keyHeight-(keyHeight*referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
+		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
 	}
 	fmt.Fprint(content, ticks.String())
 	fmt.Fprintf(content, `%s</g>`, "\n")
@@ -299,13 +302,26 @@ func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo
 	return maxTick + math.Max(refTick, refValue) + 36.0
 }
 
-func writeKeyTick(w *bytes.Buffer, xPos float64, value float64) {
+// writeHorizontalKeyTitle write the title above the key for a horizontal legend, ensuring that the text fits within the svg
+func writeHorizontalKeyTitle(request *models.RenderRequest, svgWidth float64, content *bytes.Buffer) {
+	textAdjust := ""
+	titleText := request.Choropleth.ValuePrefix + " " + request.Choropleth.ValueSuffix
+	titleTextLen := htmlutil.GetApproximateTextWidth(titleText, request.FontSize)
+	if titleTextLen >= svgWidth {
+		textAdjust = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-2)
+	}
+	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"%s>%s</text>`, "\n", svgWidth/2.0, textAdjust, titleText)
+}
+
+// writeHorizontalKeyTick draws a vertical line (the tick) at the given position, labelling it with the given value
+func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
 	fmt.Fprintf(w, `%s<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
 	fmt.Fprintf(w, `%s<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, "\n", value)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
+// writeVerticalKeyTick draws a horizontal line (the tick) at the given position, labelling it with the given value
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
 	fmt.Fprintf(w, `%s<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
@@ -313,24 +329,26 @@ func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
-func writeHKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
+// writeHorizontalKeyRefTick draws a vertical line at the correct position for the reference value, labelling it with the reference value and reference text.
+func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
 	xPos := keyInfo.keyWidth * keyInfo.referencePos
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
 	fmt.Fprintf(w, `%s<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
 	textAttr := ""
-	if keyInfo.referenceTextLeftLen > xPos + keyInfo.keyX { // adjust the text length so it will fit
-		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, xPos + keyInfo.keyX - 1)
+	if keyInfo.referenceTextLeftLen > xPos+keyInfo.keyX { // adjust the text length so it will fit
+		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, xPos+keyInfo.keyX-1)
 	}
 	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, "\n", textAttr, keyInfo.referenceTextLeft)
 	textAttr = ""
-	if keyInfo.referenceTextRightLen > svgWidth - (xPos + keyInfo.keyX) {  // adjust the text length so it will fit
-		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth - (xPos + keyInfo.keyX) - 2)
+	if keyInfo.referenceTextRightLen > svgWidth-(xPos+keyInfo.keyX) { // adjust the text length so it will fit
+		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-(xPos+keyInfo.keyX)-2)
 	}
 	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextRight)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
-func writeVerticalKeyReferenceTick(w *bytes.Buffer, yPos float64, text string, value float64) {
+// writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
+func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
 	fmt.Fprintf(w, `%s<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
 	fmt.Fprintf(w, `%s<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
@@ -338,6 +356,7 @@ func writeVerticalKeyReferenceTick(w *bytes.Buffer, yPos float64, text string, v
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
+// writeKeyMissingColour draws a square filled with the missing colour at the given position, labelling it with MissingDataText
 func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
 	fmt.Fprintf(w, `%s<g class="missingColour" transform="translate(%f, %f)">`, "\n", xPos, yPos)
 	fmt.Fprintf(w, `%s<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, "\n", colour)
@@ -345,6 +364,7 @@ func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos fl
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
+// breakInfo contains information about the breaks (the boundaries between colours)- lowerBound, upperBound and relative size
 type breakInfo struct {
 	LowerBound   float64
 	UpperBound   float64
@@ -383,18 +403,20 @@ func getSortedBreakInfo(request *models.RenderRequest) ([]*breakInfo, float64) {
 	return info, referencePos
 }
 
+// horizontalKeyInfo contains break info, the width of the key, the x position of the key, and reference tick values
 type horizontalKeyInfo struct {
-	breaks               []*breakInfo
-	referencePos         float64
-	referenceTextLeft   string
-	referenceTextLeftLen   float64
+	breaks                []*breakInfo
+	referencePos          float64
+	referenceTextLeft     string
+	referenceTextLeftLen  float64
 	referenceTextRight    string
 	referenceTextRightLen float64
-	keyWidth float64
-	keyX	float64
+	keyWidth              float64
+	keyX                  float64
 }
 
 // getHorizontalKeyInfo returns the width of the key, the x position of the key, the breaks within the key, and reference tick values
+// (making sure that the longer of the reference value and text is given the most space)
 func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *horizontalKeyInfo {
 	refInfo := getHorizontalRefTextInfo(request)
 	info := horizontalKeyInfo{}
@@ -404,7 +426,7 @@ func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *hori
 	info.keyWidth = svgWidth * 0.9
 	info.keyX = (svgWidth - info.keyWidth) / 2
 
-	// check to see if any text sits outside the svg
+	// half of the upper and lower bound text will sit outside the key
 	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[0].LowerBound), request.FontSize) / 2
 	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[len(info.breaks)-1].UpperBound), request.FontSize) / 2
 
@@ -413,20 +435,21 @@ func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *hori
 	info.referenceTextLeftLen = refInfo.referenceTextLongLen
 	info.referenceTextRight = refInfo.referenceTextShort
 	info.referenceTextRightLen = refInfo.referenceTextShortLen
-	if info.referencePos < 0.5 {
+	if info.referencePos < 0.5 { // the reference tick is less than halfway - switch the text
 		info.referenceTextRight = refInfo.referenceTextLong
 		info.referenceTextRightLen = refInfo.referenceTextLongLen
 		info.referenceTextLeft = refInfo.referenceTextShort
 		info.referenceTextLeftLen = refInfo.referenceTextShortLen
 	}
-	refPos := info.keyWidth * info.referencePos // the actual position of the reference tick
+	// now see if reference text is long enough to go beyond the bounds of the key
+	refPos := info.keyWidth * info.referencePos // the actual pixel position of the reference tick within the key
 	if refPos-info.referenceTextLeftLen < 0.0-left {
 		left = math.Abs(refPos - info.referenceTextLeftLen)
 	}
 	if (refPos+info.referenceTextRightLen)-info.keyWidth > right {
 		right = (refPos + info.referenceTextRightLen) - info.keyWidth
 	}
-
+	// if any text goes beyond the bounds of the svg, shorten the key
 	if info.keyWidth+left+right > svgWidth {
 		info.keyWidth = svgWidth - (left + right)
 		info.keyX = left
@@ -435,13 +458,15 @@ func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *hori
 	return &info
 }
 
+// horizontalRefTextInfo contains the reference value and label with information about their length
 type horizontalRefTextInfo struct {
-	referenceTextShort   string
-	referenceTextShortLen   float64
-	referenceTextLong    string
-	referenceTextLongLen float64
+	referenceTextShort    string
+	referenceTextShortLen float64
+	referenceTextLong     string
+	referenceTextLongLen  float64
 }
 
+// getHorizontalRefTextInfo calculates the approximate width of the reference value and text, assigning them to short and long values.
 func getHorizontalRefTextInfo(request *models.RenderRequest) *horizontalRefTextInfo {
 	info := horizontalRefTextInfo{}
 	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
@@ -459,30 +484,4 @@ func getHorizontalRefTextInfo(request *models.RenderRequest) *horizontalRefTextI
 		info.referenceTextShortLen = refTextLen
 	}
 	return &info
-}
-
-// getHorizontalKeyWidth assumes an initial key width of 90% of the svg width.
-// It then checks to see if any of the text is likely to go beyond the borders of the svg and adjusts if necessary.
-// It returns the key width and x position
-func getHorizontalKeyWidthAndPosition(svgWidth float64, breaks []*breakInfo, referencePos float64, request *models.RenderRequest) (float64, float64) {
-	keyWidth := svgWidth * 0.9
-	keyX := (svgWidth - keyWidth) / 2
-	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[0].LowerBound), request.FontSize) / 2
-	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[len(breaks)-1].UpperBound), request.FontSize) / 2
-
-	refPos := keyWidth * referencePos // the position of the reference tick
-	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
-	if refPos-refTextLen < 0.0-left { // reference text appears to the left of the reference tick
-		left = math.Abs(refPos - refTextLen)
-	}
-	refValueLen := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), request.FontSize)
-	if (refPos+refValueLen)-keyWidth > right { // reference value appears to the right of the reference tick
-		right = (refPos + refValueLen) - keyWidth
-	}
-
-	if keyWidth+left+right > svgWidth {
-		keyWidth = svgWidth - (left + right)
-		keyX = left
-	}
-	return keyWidth, keyX
 }

@@ -368,6 +368,29 @@ func TestRenderHorizontalKey(t *testing.T) {
 
 }
 
+func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
+	Convey("RenderHorizontalKey should render an svg and adjust title text to fit within the bounds", t, func() {
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.ValuePrefix = "This is a long-ish prefix"
+		renderRequest.Choropleth.ValueSuffix = "This is a longer suffix. It needs to be wider than the svg to test that the text is compressed"
+
+		result := RenderHorizontalKey(renderRequest)
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
+		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
+		assertKeyContents(result, renderRequest)
+	})
+
+}
+
 func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 	Convey("RenderHorizontalKey should render an svg and adjust reference text position to maximise use of space", t, func() {
 
