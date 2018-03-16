@@ -203,14 +203,14 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	ticks := bytes.NewBufferString("")
 	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
-	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
+	fmt.Fprintf(content, `\n<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgWidth, content)
-	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, keyInfo.keyX)
+	fmt.Fprintf(content, `\n<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, request.Filename, keyInfo.keyX)
 	left := 0.0
 	breaks := keyInfo.breaks
 	for i := 0; i < len(breaks); i++ {
 		width := breaks[i].RelativeSize * keyInfo.keyWidth
-		fmt.Fprintf(content, `%s<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", width, left, breaks[i].Colour)
+		fmt.Fprintf(content, `\n<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, width, left, breaks[i].Colour)
 		fmt.Fprintf(content, `</rect>`)
 		writeHorizontalKeyTick(ticks, left, breaks[i].LowerBound)
 		left += width
@@ -223,7 +223,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	if len(request.Choropleth.MissingValueColor) > 0 {
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, 0.0, 55.0)
 	}
-	fmt.Fprintf(content, `%s</g>%s</g>%s`, "\n", "\n", "\n")
+	fmt.Fprintf(content, `\n</g>\n</g>\n`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", svgAttributes, content)
@@ -252,14 +252,14 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	ticks := bytes.NewBufferString("")
 	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 
-	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename, keyWidth/2, svgHeight*0.1)
+	fmt.Fprintf(content, `\n<g id="%s-legend-vertical-container">`, request.Filename)
+	fmt.Fprintf(content, `\n<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `\n<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, keyWidth/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
 		adjustedPosition := keyHeight - position
-		fmt.Fprintf(content, `%s<rect class="keyColour" height="%f" width="8" y="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", height, adjustedPosition-height, breaks[i].Colour)
+		fmt.Fprintf(content, `\n<rect class="keyColour" height="%f" width="8" y="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, height, adjustedPosition-height, breaks[i].Colour)
 		fmt.Fprintf(content, `</rect>`)
 		writeVerticalKeyTick(ticks, adjustedPosition, breaks[i].LowerBound)
 		position += height
@@ -269,12 +269,12 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
 	}
 	fmt.Fprint(content, ticks.String())
-	fmt.Fprintf(content, `%s</g>`, "\n")
+	fmt.Fprintf(content, `\n</g>`)
 	if len(request.Choropleth.MissingValueColor) > 0 {
 		xPos := (keyWidth - float64((htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12))) / 2
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
 	}
-	fmt.Fprintf(content, `%s</g>%s`, "\n", "\n")
+	fmt.Fprintf(content, `\n</g>\n`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
@@ -316,58 +316,58 @@ func writeHorizontalKeyTitle(request *models.RenderRequest, svgWidth float64, co
 	if titleTextLen >= svgWidth {
 		textAdjust = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-2)
 	}
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"%s>%s</text>`, "\n", svgWidth/2.0, textAdjust, titleText)
+	fmt.Fprintf(content, `\n<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"%s>%s</text>`, svgWidth/2.0, textAdjust, titleText)
 }
 
 // writeHorizontalKeyTick draws a vertical line (the tick) at the given position, labelling it with the given value
 func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
-	fmt.Fprintf(w, `%s<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, "\n", value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `\n<g class="tick" transform="translate(%f, 0)">`, xPos)
+	fmt.Fprintf(w, `\n<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`)
+	fmt.Fprintf(w, `\n<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, value)
+	fmt.Fprintf(w, `\n</g>`)
 }
 
 // writeVerticalKeyTick draws a horizontal line (the tick) at the given position, labelling it with the given value
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
-	fmt.Fprintf(w, `%s<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, "\n", value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `\n<g class="tick" transform="translate(0, %f)">`, yPos)
+	fmt.Fprintf(w, `\n<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`)
+	fmt.Fprintf(w, `\n<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, value)
+	fmt.Fprintf(w, `\n</g>`)
 }
 
 // writeHorizontalKeyRefTick draws a vertical line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
 	xPos := keyInfo.keyWidth * keyInfo.referencePos
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
-	fmt.Fprintf(w, `%s<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
+	fmt.Fprintf(w, `\n<g class="tick" transform="translate(%f, 0)">`, xPos)
+	fmt.Fprintf(w, `\n<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`)
 	textAttr := ""
 	if keyInfo.referenceTextLeftLen > xPos+keyInfo.keyX { // adjust the text length so it will fit
 		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, xPos+keyInfo.keyX-1)
 	}
-	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, "\n", textAttr, keyInfo.referenceTextLeft)
+	fmt.Fprintf(w, `\n<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextLeft)
 	textAttr = ""
 	if keyInfo.referenceTextRightLen > svgWidth-(xPos+keyInfo.keyX) { // adjust the text length so it will fit
 		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-(xPos+keyInfo.keyX)-2)
 	}
 	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextRight)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `\n</g>`)
 }
 
 // writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
-	fmt.Fprintf(w, `%s<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
+	fmt.Fprintf(w, `\n<g class="tick" transform="translate(0, %f)">`, yPos)
+	fmt.Fprintf(w, `\n<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`)
+	fmt.Fprintf(w, `\n<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, text)
 	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `\n</g>`)
 }
 
 // writeKeyMissingColour draws a square filled with the missing colour at the given position, labelling it with MissingDataText
 func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
-	fmt.Fprintf(w, `%s<g class="missingColour" transform="translate(%f, %f)">`, "\n", xPos, yPos)
-	fmt.Fprintf(w, `%s<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, "\n", colour)
-	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", MissingDataText)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `\n<g class="missingColour" transform="translate(%f, %f)">`, xPos, yPos)
+	fmt.Fprintf(w, `\n<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, colour)
+	fmt.Fprintf(w, `\n<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, MissingDataText)
+	fmt.Fprintf(w, `\n</g>`)
 }
 
 // breakInfo contains information about the breaks (the boundaries between colours)- lowerBound, upperBound and relative size

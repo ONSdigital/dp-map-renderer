@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -27,8 +26,6 @@ const (
 	Feature           ElementType = iota
 	FeatureCollection ElementType = iota
 )
-
-const newline = "\n"
 
 // ScaleFunc accepts x,y coordinates and transforms them, returning a new pair of x,y coordinates.
 type ScaleFunc func(float64, float64) (float64, float64)
@@ -119,7 +116,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
 
 	if svg.pngConverter == nil {
-		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, content, newline)
+		return fmt.Sprintf(`<svg %s>%s\n</svg>`, attributes, content)
 	}
 	return svg.pngConverter.IncludeFallbackImage(attributes, content.String())
 }
@@ -226,14 +223,14 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, 
 	case g.IsMultiPolygon():
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes, title)
 	case g.IsCollection():
-		fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+		fmt.Fprintf(w, `\n<g%s>`, attributes)
 		if len(title) > 0 {
-			fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+			fmt.Fprintf(w, `\n<title>%s</title>`, title)
 		}
 		for _, x := range g.Geometries {
 			process(sf, w, x, "", "")
 		}
-		fmt.Fprintf(w, `%s</g>`, newline)
+		w.Write([]byte(`\n</g>`))
 	}
 }
 
@@ -271,19 +268,19 @@ func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string, title 
 	defer health.RecordTime(time.Now(), "geojson2svg.drawPoint")
 	x, y := sf(p[0], p[1])
 	endTag := endTag("circle", title)
-	fmt.Fprintf(w, `%s<circle cx="%f" cy="%f" r="1"%s%s`, newline, x, y, attributes, endTag)
+	fmt.Fprintf(w, `\n<circle cx="%f" cy="%f" r="1"%s%s`, x, y, attributes, endTag)
 }
 
 func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPoint")
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	fmt.Fprintf(w, `\n<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+		fmt.Fprintf(w, `\n<title>%s</title>`, title)
 	}
 	for _, p := range ps {
 		drawPoint(sf, w, p, "", "")
 	}
-	fmt.Fprintf(w, `%s</g>`, newline)
+	w.Write([]byte(`\n</g>`))
 }
 
 func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
@@ -294,53 +291,55 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	fmt.Fprintf(w, `%s<path d="%s"%s%s`, newline, trim(path), attributes, endTag)
+	fmt.Fprintf(w, `\n<path d="%s"%s%s`, trim(path), attributes, endTag)
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiLineString")
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	fmt.Fprintf(w, `\n<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+		fmt.Fprintf(w, `\n<title>%s</title>`, title)
 	}
 	for _, ps := range pps {
 		drawLineString(sf, w, ps, "", "")
 	}
-	fmt.Fprintf(w, `%s</g>`, newline)
+	w.Write([]byte(`\n</g>`))
 }
+
+var singleSpace = []byte(" ")
 
 func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawPolygon")
 	path := bytes.NewBufferString("")
-	for _, ps := range pps {
+	for i, ps := range pps {
 		subPath := bytes.NewBufferString("M")
 		for _, p := range ps {
 			x, y := sf(p[0], p[1])
 			fmt.Fprintf(subPath, "%f %f,", x, y)
 		}
-		fmt.Fprintf(path, " %s", trim(subPath))
+		if i > 0 {
+			path.Write(singleSpace)
+		}
+		path.Write([]byte(trim(subPath)))
 	}
-	pathString := trim(path)
-	endTag := endTag("path", title)
-	fmt.Fprintf(w, `%s<path d="%s Z"%s%s`, newline, pathString, attributes, endTag)
+	w.Write([]byte(`\n<path d="` + trim(path) + ` Z"` + attributes + endTag("path", title)))
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPolygon")
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+	fmt.Fprintf(w, `\n<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+		fmt.Fprintf(w, `\n<title>%s</title>`, title)
 	}
 	for _, pps := range ppps {
 		drawPolygon(sf, w, pps, "", "")
 	}
-	fmt.Fprintf(w, `%s</g>`, newline)
+	w.Write([]byte(`\n</g>`))
 }
 
-func trim(s fmt.Stringer) string {
+func trim(s *bytes.Buffer) string {
 	defer health.RecordTime(time.Now(), "geojson2svg.trim")
-	re := regexp.MustCompile(",$")
-	return string(re.ReplaceAll([]byte(strings.TrimSpace(s.String())), []byte("")))
+	return strings.Trim(s.String(), " ,")
 }
 
 // endTag creates an end tag string, "/>" if title is empty, "><title>title</title></tag>" otherwise.

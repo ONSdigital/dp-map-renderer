@@ -96,7 +96,7 @@ func (exe *executablePNGConverter) Convert(svg []byte) ([]byte, error) {
 // thanks to http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
 func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, content string) string {
 	defer health.TrackTime(time.Now(), "geojson2svg.IncludeFallbackImage")
-	svgString := fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, content, newline)
+	svgString := fmt.Sprintf(`<svg %s>%s\n</svg>`, attributes, content)
 	png, err := exe.Convert([]byte(svgString))
 	pngString := "<p>Unsupported Browser</p>"
 	if err == nil {
