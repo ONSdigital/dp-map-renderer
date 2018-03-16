@@ -11,7 +11,7 @@
   "include_fallback_png": false,
   "choropleth": {
     "reference_value": 13,
-    "reference_value_text": "UK",
+    "reference_value_text": "UK avg.",
     "breaks": [
       {"lower_bound": 0, "color": "rgb(241, 238, 246)"},
       {"lower_bound": 6, "color": "rgb(189, 201, 225)"},

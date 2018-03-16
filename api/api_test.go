@@ -125,7 +125,9 @@ var exampleResponseStart = `
 	<meta charset="UTF-8">
 	<style>
 	body {
-		font-family: sans-serif;
+		font-family: "Open Sans", Helvetica, Arial, sans-serif;
+		font-size: 14px;
+		font-weight: 400;
 	}
 	.map__caption {
 		font-size: 150%; 

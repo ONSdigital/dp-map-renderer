@@ -190,19 +190,19 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	svg.AppendFeatureCollection(geoJSON)
 	svgWidth, _, _ := getWidthAndHeight(request, svg)
 
-	breaks, referencePos := getSortedBreakInfo(request)
+	keyInfo := getHorizontalKeyInfo(svgWidth, request)
 
-	keyWidth := svgWidth * 0.9
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	attributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, svgWidth*0.05)
+	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", svgWidth/2.0, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, keyInfo.keyX)
 	left := 0.0
+	breaks := keyInfo.breaks
 	for i := 0; i < len(breaks); i++ {
-		width := breaks[i].RelativeSize * keyWidth
+		width := breaks[i].RelativeSize * keyInfo.keyWidth
 		fmt.Fprintf(content, `%s<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", width, left, breaks[i].Colour)
 		fmt.Fprintf(content, `</rect>`)
 		writeKeyTick(ticks, left, breaks[i].LowerBound)
@@ -210,7 +210,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	}
 	writeKeyTick(ticks, left, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeKeyReferenceTick(ticks, keyWidth*referencePos, request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
+		writeHKeyRefTick(ticks, keyInfo, svgWidth)
 	}
 	fmt.Fprint(content, ticks.String())
 	if len(request.Choropleth.MissingValueColor) > 0 {
@@ -219,9 +219,9 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	fmt.Fprintf(content, `%s</g>%s</g>%s`, "\n", "\n", "\n")
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
-		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
+		return fmt.Sprintf("<svg %s>%s</svg>", svgAttributes, content)
 	}
-	return pngConverter.IncludeFallbackImage(attributes, content.String())
+	return pngConverter.IncludeFallbackImage(svgAttributes, content.String())
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
@@ -278,11 +278,11 @@ func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) flo
 	missingWidth := htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12
 	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
 	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
-	return math.Max(maxWidth, getTickTextWidth(request, breaks)) + 10
+	return math.Max(maxWidth, getVerticalTickTextWidth(request, breaks)) + 10
 }
 
-// getTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
-func getTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+// getVerticalTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
+func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
 	maxTick := 0.0
 	for _, b := range breaks {
 		lbound := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", b.LowerBound), request.FontSize)
@@ -313,11 +313,20 @@ func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
-func writeKeyReferenceTick(w *bytes.Buffer, xPos float64, text string, value float64) {
+func writeHKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
+	xPos := keyInfo.keyWidth * keyInfo.referencePos
 	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
 	fmt.Fprintf(w, `%s<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
-	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
+	textAttr := ""
+	if keyInfo.referenceTextLeftLen > xPos + keyInfo.keyX { // adjust the text length so it will fit
+		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, xPos + keyInfo.keyX - 1)
+	}
+	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, "\n", textAttr, keyInfo.referenceTextLeft)
+	textAttr = ""
+	if keyInfo.referenceTextRightLen > svgWidth - (xPos + keyInfo.keyX) {  // adjust the text length so it will fit
+		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth - (xPos + keyInfo.keyX) - 2)
+	}
+	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextRight)
 	fmt.Fprintf(w, `%s</g>`, "\n")
 }
 
@@ -372,4 +381,108 @@ func getSortedBreakInfo(request *models.RenderRequest) ([]*breakInfo, float64) {
 	}
 	referencePos := (request.Choropleth.ReferenceValue - minValue) / totalRange
 	return info, referencePos
+}
+
+type horizontalKeyInfo struct {
+	breaks               []*breakInfo
+	referencePos         float64
+	referenceTextLeft   string
+	referenceTextLeftLen   float64
+	referenceTextRight    string
+	referenceTextRightLen float64
+	keyWidth float64
+	keyX	float64
+}
+
+// getHorizontalKeyInfo returns the width of the key, the x position of the key, the breaks within the key, and reference tick values
+func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *horizontalKeyInfo {
+	refInfo := getHorizontalRefTextInfo(request)
+	info := horizontalKeyInfo{}
+	info.breaks, info.referencePos = getSortedBreakInfo(request)
+
+	// assume a default width of 90% of svg
+	info.keyWidth = svgWidth * 0.9
+	info.keyX = (svgWidth - info.keyWidth) / 2
+
+	// check to see if any text sits outside the svg
+	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[0].LowerBound), request.FontSize) / 2
+	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[len(info.breaks)-1].UpperBound), request.FontSize) / 2
+
+	// the longer bit of reference text should sit on the side of the tick with the most space
+	info.referenceTextLeft = refInfo.referenceTextLong
+	info.referenceTextLeftLen = refInfo.referenceTextLongLen
+	info.referenceTextRight = refInfo.referenceTextShort
+	info.referenceTextRightLen = refInfo.referenceTextShortLen
+	if info.referencePos < 0.5 {
+		info.referenceTextRight = refInfo.referenceTextLong
+		info.referenceTextRightLen = refInfo.referenceTextLongLen
+		info.referenceTextLeft = refInfo.referenceTextShort
+		info.referenceTextLeftLen = refInfo.referenceTextShortLen
+	}
+	refPos := info.keyWidth * info.referencePos // the actual position of the reference tick
+	if refPos-info.referenceTextLeftLen < 0.0-left {
+		left = math.Abs(refPos - info.referenceTextLeftLen)
+	}
+	if (refPos+info.referenceTextRightLen)-info.keyWidth > right {
+		right = (refPos + info.referenceTextRightLen) - info.keyWidth
+	}
+
+	if info.keyWidth+left+right > svgWidth {
+		info.keyWidth = svgWidth - (left + right)
+		info.keyX = left
+	}
+
+	return &info
+}
+
+type horizontalRefTextInfo struct {
+	referenceTextShort   string
+	referenceTextShortLen   float64
+	referenceTextLong    string
+	referenceTextLongLen float64
+}
+
+func getHorizontalRefTextInfo(request *models.RenderRequest) *horizontalRefTextInfo {
+	info := horizontalRefTextInfo{}
+	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
+	refValue := fmt.Sprintf("%g", request.Choropleth.ReferenceValue)
+	refValueLen := htmlutil.GetApproximateTextWidth(refValue, request.FontSize)
+	if refTextLen > refValueLen {
+		info.referenceTextLong = request.Choropleth.ReferenceValueText
+		info.referenceTextLongLen = refTextLen
+		info.referenceTextShort = refValue
+		info.referenceTextShortLen = refValueLen
+	} else {
+		info.referenceTextLong = refValue
+		info.referenceTextLongLen = refValueLen
+		info.referenceTextShort = request.Choropleth.ReferenceValueText
+		info.referenceTextShortLen = refTextLen
+	}
+	return &info
+}
+
+// getHorizontalKeyWidth assumes an initial key width of 90% of the svg width.
+// It then checks to see if any of the text is likely to go beyond the borders of the svg and adjusts if necessary.
+// It returns the key width and x position
+func getHorizontalKeyWidthAndPosition(svgWidth float64, breaks []*breakInfo, referencePos float64, request *models.RenderRequest) (float64, float64) {
+	keyWidth := svgWidth * 0.9
+	keyX := (svgWidth - keyWidth) / 2
+	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[0].LowerBound), request.FontSize) / 2
+	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[len(breaks)-1].UpperBound), request.FontSize) / 2
+
+	refPos := keyWidth * referencePos // the position of the reference tick
+	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
+	if refPos-refTextLen < 0.0-left { // reference text appears to the left of the reference tick
+		left = math.Abs(refPos - refTextLen)
+	}
+	refValueLen := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), request.FontSize)
+	if (refPos+refValueLen)-keyWidth > right { // reference value appears to the right of the reference tick
+		right = (refPos + refValueLen) - keyWidth
+	}
+
+	if keyWidth+left+right > svgWidth {
+		keyWidth = svgWidth - (left + right)
+		keyX = left
+	}
+	return keyWidth, keyX
 }
