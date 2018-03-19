@@ -308,7 +308,7 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	fmt.Fprintf(w, `<path d="%s"%s%s`, trim(path), attributes, endTag)
+	fmt.Fprintf(w, `<path d="%s"%s%s`, strings.TrimSuffix(path.String(), ","), attributes, endTag)
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
@@ -323,24 +323,18 @@ func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attribute
 	w.Write([]byte(`</g>`))
 }
 
-var singleSpace = []byte(" ")
-
 func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawPolygon")
 	path := bytes.NewBufferString("")
-	for i, ps := range pps {
-		subPath := bytes.NewBufferString("M")
+	for _, ps := range pps {
+		subPath := bytes.NewBufferString(" M")
 		for _, p := range ps {
 			x, y := sf(p[0], p[1])
 			fmt.Fprintf(subPath, "%f %f,", x, y)
 		}
-		if i > 0 {
-			path.Write(singleSpace)
-		}
-		path.Write([]byte(trim(subPath)))
+		path.Write(bytes.TrimRight(subPath.Bytes(), ","))
 	}
-	//fmt.Fprintf(w, `<path d="%s Z"%s%s`, trim(path), attributes, endTag("path", title))
-	w.Write([]byte(`<path d="` + trim(path) + ` Z"` + attributes + endTag("path", title)))
+	w.Write([]byte(`<path d="` + strings.TrimPrefix(path.String(), " ") + ` Z"` + attributes + endTag("path", title)))
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
@@ -353,11 +347,6 @@ func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attribute
 		drawPolygon(sf, w, pps, "", "")
 	}
 	w.Write([]byte(`</g>`))
-}
-
-func trim(s *bytes.Buffer) string {
-	defer health.RecordTime(time.Now(), "geojson2svg.trim")
-	return strings.Trim(s.String(), " ,")
 }
 
 // endTag creates an end tag string, "/>" if title is empty, "><title>title</title></tag>" otherwise.
