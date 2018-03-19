@@ -99,7 +99,9 @@ func TestRejectInvalidRequest(t *testing.T) {
 		So(w.Code, ShouldEqual, http.StatusNotFound)
 		So(w.Body.String(), ShouldResemble, "Unknown render type\n")
 	})
+}
 
+func TestRejectInvalidJSON(t *testing.T) {
 	Convey("When an invalid json message is sent, a bad request is returned", t, func() {
 		reader := strings.NewReader("{")
 		r, err := http.NewRequest("POST", requestSVGURL, reader)
@@ -109,10 +111,6 @@ func TestRejectInvalidRequest(t *testing.T) {
 		api := routes(mux.NewRouter())
 		api.router.ServeHTTP(w, r)
 		So(w.Code, ShouldEqual, http.StatusBadRequest)
-
-		bodyBytes, _ := ioutil.ReadAll(w.Body)
-		response := string(bodyBytes)
-		So(response, ShouldResemble, "unexpected end of JSON input\n")
 	})
 }
 

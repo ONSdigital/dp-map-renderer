@@ -51,7 +51,7 @@ func TestCreateRenderRequestWithInvalidJSON(t *testing.T) {
 	Convey("When a render request contains json with an invalid syntax, and error is returned", t, func() {
 		_, err := CreateRenderRequest(strings.NewReader(`{"foo`))
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldResemble, "unexpected end of JSON input")
+		So(err.Error(), ShouldContainSubstring, "unexpected end of")
 	})
 }
 

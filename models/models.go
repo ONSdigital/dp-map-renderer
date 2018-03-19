@@ -11,6 +11,7 @@ import (
 	"github.com/rubenv/topojson"
 	"time"
 	"github.com/ONSdigital/dp-map-renderer/health"
+	"github.com/json-iterator/go"
 )
 
 // A list of errors returned from package
@@ -112,7 +113,7 @@ func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
 	}
 
 	var request RenderRequest
-	err = json.Unmarshal(bytes, &request)
+	err = jsoniter.Unmarshal(bytes, &request)
 	if err != nil {
 		log.Error(err, log.Data{"request_body": string(bytes)})
 		return nil, err
