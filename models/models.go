@@ -25,19 +25,21 @@ var (
 
 // RenderRequest represents a structure for a map render job
 type RenderRequest struct {
-	Title      string      `json:"title,omitempty"`
-	Subtitle   string      `json:"subtitle,omitempty"`
-	Source     string      `json:"source,omitempty"`
-	SourceLink string      `json:"source_link,omitempty"`
-	Licence    string      `json:"licence,omitempty"`
-	Filename   string      `json:"filename,omitempty"`
-	Footnotes  []string    `json:"footnotes,omitempty"`
-	MapType    string      `json:"map_type,omitempty"`
-	Geography  *Geography  `json:"geography,omitempty"`
-	Data       []*DataRow  `json:"data,omitempty"`
-	Choropleth *Choropleth `json:"choropleth,omitempty"`
-	Width      float64     `json:"width,omitempty"`
-	Height     float64     `json:"height,omitempty"`
+	Title              string      `json:"title,omitempty"`
+	Subtitle           string      `json:"subtitle,omitempty"`
+	Source             string      `json:"source,omitempty"`
+	SourceLink         string      `json:"source_link,omitempty"`
+	Licence            string      `json:"licence,omitempty"`
+	Filename           string      `json:"filename,omitempty"`
+	Footnotes          []string    `json:"footnotes,omitempty"`
+	MapType            string      `json:"map_type,omitempty"`
+	Geography          *Geography  `json:"geography,omitempty"`
+	Data               []*DataRow  `json:"data,omitempty"`
+	Choropleth         *Choropleth `json:"choropleth,omitempty"`
+	Width              float64     `json:"width,omitempty"`
+	Height             float64     `json:"height,omitempty"`
+	IncludeFallbackPng bool        `json:"include_fallback_png"`
+	FontSize           int         `json:"font_size"`
 }
 
 // Geography holds the topojson topology and supporting information

@@ -1,17 +1,18 @@
 package analyser
 
 import (
-	"github.com/ONSdigital/dp-map-renderer/models"
-	"strings"
-	"io"
-	"fmt"
 	"encoding/csv"
+	"fmt"
+	"io"
 	"math"
-	"strconv"
-	"github.com/ONSdigital/go-ns/log"
-	"github.com/rubenv/topojson"
-	"github.com/ThinkingLogic/jenks"
 	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/ONSdigital/dp-map-renderer/models"
+	"github.com/ONSdigital/go-ns/log"
+	"github.com/ThinkingLogic/jenks"
+	"github.com/rubenv/topojson"
 )
 
 // AnalyseData analyses the given topology and csv file to confirm that they match, returning the csv converted to json
@@ -36,11 +37,11 @@ func AnalyseData(request *models.AnalyseRequest) (*models.AnalyseResponse, error
 		return nil, fmt.Errorf("Data does not match Topology - IDs in the data do not match any IDs in the topology (using property '%s' to identify features in the topology)", request.Geography.IDProperty)
 	}
 	if len(unmatchedRows) > 0 {
-		messages = append(messages, &models.Message{Level:"error", Text:fmt.Sprintf("IDs of %d rows could not be found in the topology. Row IDs: [%v]", len(unmatchedRows), strings.Join(unmatchedRows, ", "))})
+		messages = append(messages, &models.Message{Level: "error", Text: fmt.Sprintf("IDs of %d rows could not be found in the topology. Row IDs: [%v]", len(unmatchedRows), strings.Join(unmatchedRows, ", "))})
 	}
 
 	count := len(parseInfo.rows) - len(unmatchedRows)
-	messages = append(messages, &models.Message{Level:"info", Text: fmt.Sprintf("Successfully processed %d of %d rows", count, parseInfo.totalRows)})
+	messages = append(messages, &models.Message{Level: "info", Text: fmt.Sprintf("Successfully processed %d of %d rows", count, parseInfo.totalRows)})
 
 	values := extractValues(parseInfo.rows)
 	breaks := jenks.AllNaturalBreaks(values, 11)
@@ -50,7 +51,7 @@ func AnalyseData(request *models.AnalyseRequest) (*models.AnalyseResponse, error
 
 	classCount := bestFitClassCount(values, breaks)
 
-	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue:values[0], MaxValue:values[len(values)-1], BestFitClassCount:classCount}, nil
+	return &models.AnalyseResponse{Data: parseInfo.rows, Messages: messages, Breaks: breaks, MinValue: values[0], MaxValue: values[len(values)-1], BestFitClassCount: classCount}, nil
 }
 
 // extractValues extracts and sorts the values in rows.
@@ -63,9 +64,8 @@ func extractValues(rows []*models.DataRow) []float64 {
 	return values
 }
 
-
 // parseData parses the csv file into a slice of DataRows, returning it along with messages about the number of rows parsed and any failed rows.
-func parseData(csvSource string, idIndex int, valueIndex int, hasHeader bool) (*parseInfo, error){
+func parseData(csvSource string, idIndex int, valueIndex int, hasHeader bool) (*parseInfo, error) {
 	r := csv.NewReader(strings.NewReader(csvSource))
 	r.FieldsPerRecord = -1 // allow variable count of fields per record
 
@@ -100,7 +100,7 @@ func parseData(csvSource string, idIndex int, valueIndex int, hasHeader bool) (*
 			missingValues = append(missingValues, id)
 			continue
 		}
-		rows = append(rows, &models.DataRow{ID: id, Value:value})
+		rows = append(rows, &models.DataRow{ID: id, Value: value})
 	}
 	if len(missingColumns) == i {
 		return nil, fmt.Errorf("All CSV rows had fewer than %d columns - could not read data", requiredColumns)
@@ -112,10 +112,10 @@ func parseData(csvSource string, idIndex int, valueIndex int, hasHeader bool) (*
 	messages := []*models.Message{}
 	if len(missingColumns) > 0 {
 		rowNumbers := strings.Join(strings.Fields(fmt.Sprint(missingColumns)), ", ")
-		messages = append(messages, &models.Message{Level:"warn", Text: fmt.Sprintf("%d rows have missing columns and could not be parsed. Row numbers: %v", len(missingColumns), rowNumbers)})
+		messages = append(messages, &models.Message{Level: "warn", Text: fmt.Sprintf("%d rows have missing columns and could not be parsed. Row numbers: %v", len(missingColumns), rowNumbers)})
 	}
 	if len(missingValues) > 0 {
-		messages = append(messages, &models.Message{Level:"warn", Text: fmt.Sprintf("%d rows have missing (or non-numeric) values and could not be parsed. Row IDs: [%v]", len(missingValues), strings.Join(missingValues, ", "))})
+		messages = append(messages, &models.Message{Level: "warn", Text: fmt.Sprintf("%d rows have missing (or non-numeric) values and could not be parsed. Row IDs: [%v]", len(missingValues), strings.Join(missingValues, ", "))})
 	}
 
 	return &parseInfo{rows: rows, messages: messages, totalRows: i}, nil
@@ -153,8 +153,8 @@ func getGeographyIDs(topologyObjects []*topojson.Geometry, idProperty string) ma
 
 // parseInfo contains information about the rows parsed from the csv
 type parseInfo struct {
-	rows []*models.DataRow
-	messages []*models.Message
+	rows      []*models.DataRow
+	messages  []*models.Message
 	totalRows int
 }
 
@@ -165,7 +165,7 @@ func bestFitClassCount(data []float64, allBreaks [][]float64) int {
 	if len(allBreaks) == 0 {
 		return 0
 	}
-	
+
 	const classCountFactor = 0.2
 	goodnessFactor := 1.0 - classCountFactor
 
@@ -175,7 +175,7 @@ func bestFitClassCount(data []float64, allBreaks [][]float64) int {
 	for _, breaks := range allBreaks {
 		goodness := goodnessOfVarianceFit(data, breaks)
 		classFitness := 1.0 - (float64(len(breaks)) / maxClasses) // fewer classes are fitter
-		fitness := ( (goodness * goodnessFactor) + (classFitness * classCountFactor) ) / 2.0
+		fitness := ((goodness * goodnessFactor) + (classFitness * classCountFactor)) / 2.0
 		if fitness > bestFitness {
 			bestCount = len(breaks)
 			bestFitness = fitness
@@ -208,7 +208,7 @@ func goodnessOfVarianceFit(data []float64, classes []float64) float64 {
 	return (ssdData - ssdc) / ssdData
 }
 
-func sum(data []float64)float64 {
+func sum(data []float64) float64 {
 	sum := 0.0
 	for _, i := range data {
 		sum += i
@@ -221,7 +221,7 @@ func sumOfSquaredDeviations(data []float64) float64 {
 
 	ssd := 0.0
 	for _, i := range data {
-		ssd += math.Pow(i - mean, 2)
+		ssd += math.Pow(i-mean, 2)
 	}
 	return ssd
 }

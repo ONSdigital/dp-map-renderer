@@ -10,24 +10,30 @@ import (
 
 	"bytes"
 
+	"github.com/ONSdigital/dp-map-renderer/geojson2svg"
+	"github.com/ONSdigital/dp-map-renderer/renderer"
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 var (
-	host           = "http://localhost:80"
-	requestHTMLURL = host + "/render/html"
-	analyseURL = host + "/analyse"
+	host          = "http://localhost:80"
+	requestSVGURL = host + "/render/svg"
+	requestPNGURL = host + "/render/png"
+	analyseURL    = host + "/analyse"
 )
 
 var saveTestResponse = true
 
-func TestSuccessfullyRenderMap(t *testing.T) {
+func TestSuccessfullyRenderSVGMap(t *testing.T) {
 	t.Parallel()
-	Convey("Successfully render an html map", t, func() {
+	Convey("Successfully render an html map with svg images", t, func() {
+
+		renderer.UsePNGConverter(geojson2svg.NewPNGConverter("sh", []string{"-c", "cat testdata/fallback.png >> " + geojson2svg.ArgPNGFilename}))
+
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
-		r, err := http.NewRequest("POST", requestHTMLURL, reader)
+		r, err := http.NewRequest("POST", requestSVGURL, reader)
 		So(err, ShouldBeNil)
 
 		w := httptest.NewRecorder()
@@ -41,6 +47,27 @@ func TestSuccessfullyRenderMap(t *testing.T) {
 			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)
 		}
+	})
+}
+
+func TestSuccessfullyRenderPNGMap(t *testing.T) {
+	t.Parallel()
+	Convey("Successfully render an html map with png images", t, func() {
+
+		renderer.UsePNGConverter(geojson2svg.NewPNGConverter("sh", []string{"-c", "cat testdata/fallback.png >> " + geojson2svg.ArgPNGFilename}))
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		r, err := http.NewRequest("POST", requestPNGURL, reader)
+		So(err, ShouldBeNil)
+
+		w := httptest.NewRecorder()
+		api := routes(mux.NewRouter())
+		api.router.ServeHTTP(w, r)
+		So(w.Code, ShouldEqual, http.StatusOK)
+		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
+		So(w.Body.String(), ShouldNotContainSubstring, "<svg")
+		So(w.Body.String(), ShouldContainSubstring, "<img")
+		So(w.Body.String(), ShouldContainSubstring, `src="data:image/png;base64,`)
 	})
 }
 
@@ -78,7 +105,7 @@ func TestRejectInvalidRequest(t *testing.T) {
 
 	Convey("When an invalid json message is sent, a bad request is returned", t, func() {
 		reader := strings.NewReader("{")
-		r, err := http.NewRequest("POST", requestHTMLURL, reader)
+		r, err := http.NewRequest("POST", requestSVGURL, reader)
 		So(err, ShouldBeNil)
 
 		w := httptest.NewRecorder()
@@ -98,7 +125,9 @@ var exampleResponseStart = `
 	<meta charset="UTF-8">
 	<style>
 	body {
-		font-family: sans-serif;
+		font-family: "Open Sans", Helvetica, Arial, sans-serif;
+		font-size: 14px;
+		font-weight: 400;
 	}
 	.map__caption {
 		font-size: 150%; 

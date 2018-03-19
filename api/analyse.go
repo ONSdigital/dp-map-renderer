@@ -3,10 +3,11 @@ package api
 import (
 	"net/http"
 
+	"encoding/json"
+
+	"github.com/ONSdigital/dp-map-renderer/analyser"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/ONSdigital/go-ns/log"
-	"github.com/ONSdigital/dp-map-renderer/analyser"
-	"encoding/json"
 )
 
 func (api *RendererAPI) analyseData(w http.ResponseWriter, r *http.Request) {

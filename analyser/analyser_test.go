@@ -3,11 +3,12 @@ package analyser_test
 import (
 	"testing"
 
-	"github.com/ONSdigital/dp-map-renderer/models"
 	"bytes"
+
+	"github.com/ONSdigital/dp-map-renderer/analyser"
+	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/ONSdigital/dp-map-renderer/testdata"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/ONSdigital/dp-map-renderer/analyser"
 )
 
 func TestAnalyseData(t *testing.T) {
@@ -144,7 +145,6 @@ func TestAnalyseDataShouldReturnErrorWhenNoRowsHaveEnoughColumns(t *testing.T) {
 		request.CSV = "S12000013,Eilean Siar (Western Isles)\nS12000023,Orkney Islands"
 		request.HasHeaderRow = false
 
-
 		result, err := analyser.AnalyseData(request)
 
 		So(err, ShouldNotBeNil)
@@ -226,7 +226,7 @@ func TestAnalyseDataShouldReturnResponseWithWarningsForMissingRows(t *testing.T)
 func filterMessages(response *models.AnalyseResponse, level string) []*models.Message {
 	m := []*models.Message{}
 	for _, msg := range response.Messages {
-		if (msg.Level == level) {
+		if msg.Level == level {
 			m = append(m, msg)
 		}
 	}

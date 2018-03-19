@@ -8,6 +8,23 @@
   "footnotes": ["Do we need footnotes?"],
   "map_type": "choropleth",
   "width": 400,
+  "include_fallback_png": false,
+  "choropleth": {
+    "reference_value": 13,
+    "reference_value_text": "UK avg.",
+    "breaks": [
+      {"lower_bound": 0, "color": "rgb(241, 238, 246)"},
+      {"lower_bound": 6, "color": "rgb(189, 201, 225)"},
+      {"lower_bound": 11, "color": "rgb(116, 169, 207)"},
+      {"lower_bound": 20, "color": "rgb(43, 140, 190)"},
+      {"lower_bound": 33, "color": "rgb(4, 90, 141)"}
+    ],
+    "missing_value_color": "LightGrey",
+    "value_prefix": "",
+    "value_suffix": "% non-UK born",
+    "horizontal_legend_position": "before",
+    "vertical_legend_position": "after"
+  },
   "geography": {
     "id_property": "AREACD",
     "name_property": "AREANM",
@@ -429,21 +446,5 @@
     { "id": "W06000022", "value": 9 },
     { "id": "W06000023", "value": 4 },
     { "id": "W06000024", "value": 5}
-  ],
-  "choropleth": {
-    "reference_value": 13,
-    "reference_value_text": "UK",
-    "breaks": [
-      {"lower_bound": 0, "color": "rgb(241, 238, 246)"},
-      {"lower_bound": 6, "color": "rgb(189, 201, 225)"},
-      {"lower_bound": 11, "color": "rgb(116, 169, 207)"},
-      {"lower_bound": 20, "color": "rgb(43, 140, 190)"},
-      {"lower_bound": 33, "color": "rgb(4, 90, 141)"}
-    ],
-    "missing_value_color": "LightGrey",
-    "value_prefix": "",
-    "value_suffix": "% non-UK born",
-    "horizontal_legend_position": "before",
-    "vertical_legend_position": "after"
-  }
+  ]
 }
