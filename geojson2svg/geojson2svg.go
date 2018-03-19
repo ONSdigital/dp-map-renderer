@@ -45,6 +45,7 @@ type SVG struct {
 	elements     []*SVGElement
 	titleProp    string
 	pngConverter PNGConverter
+	bounds       *boundingRectangle
 }
 
 // SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
@@ -68,6 +69,11 @@ type PNGConverter interface {
 	// IncludeFallbackImage generates an svg with the given attributes, content and a fallback image:
 	// <svg svgAttributes><switch><g>svgContent</g><foreignObject><image src="data:image/png;base64,..." /></foreignObject></svg>
 	IncludeFallbackImage(svgAttributes string, svgContent string) string
+}
+
+// boundingRectangle is used to cache the result of calculations in getBoundingRectangle
+type boundingRectangle struct {
+	minX, minY, maxX, maxY float64
 }
 
 // New returns a new SVG that can be used to to draw geojson geometries,
@@ -95,7 +101,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 		o(svg)
 	}
 
-	sf := makeScaleFunc(width, height, svg.padding, svg.points(), projection)
+	sf := svg.makeScaleFunc(width, height, svg.padding, svg.points(), projection)
 
 	content := bytes.NewBufferString("")
 	for _, e := range svg.elements {
@@ -124,16 +130,24 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 // AppendGeometry adds a geojson Geometry to the svg.
 func (svg *SVG) AppendGeometry(g *geojson.Geometry) {
 	svg.elements = append(svg.elements, &SVGElement{geometry: g, elementType: Geometry})
+	svg.clearCache()
 }
 
 // AppendFeature adds a geojson Feature to the svg.
 func (svg *SVG) AppendFeature(f *geojson.Feature) {
 	svg.elements = append(svg.elements, &SVGElement{feature: f, elementType: Feature})
+	svg.clearCache()
 }
 
 // AppendFeatureCollection adds a geojson FeatureCollection to the svg.
 func (svg *SVG) AppendFeatureCollection(fc *geojson.FeatureCollection) {
 	svg.elements = append(svg.elements, &SVGElement{featureCollection: fc, elementType: FeatureCollection})
+	svg.clearCache()
+}
+
+// clearCache deletes all internal cached values
+func (svg *SVG) clearCache() {
+	svg.bounds = nil
 }
 
 // WithAttribute adds the key value pair as attribute to the
@@ -388,7 +402,7 @@ func makeAttributes(as map[string]string) string {
 
 // makeScaleFunc creates a function that will scale a pair of coordinates so that they fit within the width and height,
 // passing them through the projection first.
-func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, projection ScaleFunc) ScaleFunc {
+func (svg *SVG) makeScaleFunc(width, height float64, padding Padding, ps [][]float64, projection ScaleFunc) ScaleFunc {
 	w := width - padding.Left - padding.Right
 	h := height - padding.Top - padding.Bottom
 
@@ -400,7 +414,7 @@ func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, proje
 		return func(x, y float64) (float64, float64) { return w / 2, h / 2 }
 	}
 
-	minX, minY, maxX, maxY := getBoundingRectangle(projection, ps)
+	minX, minY, maxX, maxY := svg.getBoundingRectangle(projection, ps)
 	xRes := (maxX - minX) / w
 	yRes := (maxY - minY) / h
 	res := math.Max(xRes, yRes)
@@ -412,10 +426,20 @@ func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, proje
 
 }
 
-func getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float64, float64, float64) {
+// getBoundingRectangle calculates (and caches) the minX, minY, maxX, maxY coordinates of the svg
+func (svg *SVG) getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float64, float64, float64) {
 	defer health.RecordTime(time.Now(), "geojson2svg.getBoundingRectangle")
+	if svg.bounds == nil {
+		svg.bounds = calcBoundingRectangle(projection, ps)
+	}
+	return svg.bounds.minX, svg.bounds.minY, svg.bounds.maxX, svg.bounds.maxY
+}
+
+// calcBoundingRectangle calculates the minX, minY, maxX, maxY coordinates of the svg.
+func calcBoundingRectangle(projection ScaleFunc, ps [][]float64) *boundingRectangle {
+	defer health.RecordTime(time.Now(), "geojson2svg.calcBoundingRectangle")
 	if len(ps) == 0 || len(ps[0]) == 0 {
-		return 0, 0, 0, 0
+		return &boundingRectangle{}
 	}
 	minX, minY := projection(ps[0][0], ps[0][1])
 	maxX, maxY := projection(ps[0][0], ps[0][1])
@@ -426,12 +450,12 @@ func getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float6
 		minY = math.Min(minY, y)
 		maxY = math.Max(maxY, y)
 	}
-	return minX, minY, maxX, maxY
+	return &boundingRectangle{minX, minY, maxX, maxY}
 }
 
 // GetHeightForWidth returns an appropriate height given a desired width.
 func (svg *SVG) GetHeightForWidth(width float64, projection ScaleFunc) float64 {
-	minX, minY, maxX, maxY := getBoundingRectangle(projection, svg.points())
+	minX, minY, maxX, maxY := svg.getBoundingRectangle(projection, svg.points())
 	svgWidth := maxX - minX
 	svgHeight := maxY - minY
 	ratio := svgHeight / svgWidth
