@@ -93,7 +93,7 @@ func (exe *executablePNGConverter) Convert(svg []byte) ([]byte, error) {
 // IncludeFallbackImage inserts a foreignObject with a fallback png image.
 // thanks to http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
 func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, content string) string {
-	svgString := fmt.Sprintf(`<svg %s>%s\n</svg>`, attributes, content)
+	svgString := fmt.Sprintf(`<svg %s>%s</svg>`, attributes, content)
 	png, err := exe.Convert([]byte(svgString))
 	pngString := "<p>Unsupported Browser</p>"
 	if err == nil {

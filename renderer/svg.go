@@ -31,7 +31,7 @@ type valueAndColour struct {
 	colour string
 }
 
-// SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as
+// SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as converting topojson to geojson)
 type SVGRequest struct {
 	request                      *models.RenderRequest
 	geoJSON                      *geojson.FeatureCollection
