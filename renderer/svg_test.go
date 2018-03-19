@@ -33,7 +33,7 @@ func TestRenderSVG(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg width="400" height="748" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg width="400" height="748" id="map-abcd1234-svg" viewBox="0 0 400 748">`)
 	})
 }
 

@@ -148,6 +148,7 @@ var exampleResponseStart = `
 		background-color: LightBlue;
 	}
 	</style>
+	<script type="text/javascript" src="http://ariutta.github.io/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
 	<script type="text/javascript">
 	function toggleLegend() {
 		vert = document.getElementById("abcd1234-legend-vertical")
@@ -170,5 +171,8 @@ var exampleResponseStart = `
 <button onclick="toggleLegend()">Toggle legend position</button>
 `
 var exampleResponseEnd = `
+<script type="text/javascript">
+svgPanZoom('#map-abcd1234-svg', {minZoom: 0.75, maxZoom: 20, zoomScaleSensitivity: 0.4});
+</script>
 </body>
 </html>`

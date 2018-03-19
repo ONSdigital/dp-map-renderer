@@ -79,6 +79,7 @@ func RenderSVG(svgRequest *SVGRequest) string {
 	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
+		g2s.WithAttribute("id", mapID(request) + "-svg"),
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
 		g2s.WithPNGFallback(converter))
 }
