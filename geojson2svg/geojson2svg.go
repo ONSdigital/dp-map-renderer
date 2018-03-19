@@ -13,8 +13,6 @@ import (
 	"strings"
 
 	"github.com/paulmach/go.geojson"
-	"time"
-	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 // ElementType represents the elements that may be represented in an SVG
@@ -95,7 +93,6 @@ func (svg *SVG) Draw(width, height float64, opts ...Option) string {
 // DrawWithProjection renders the final SVG with the given options to a string.
 // All coordinates will be converted by the given projection, then scaled to fit into the svg.
 func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, opts ...Option) string {
-	defer health.TrackTime(time.Now(), "geojson2svg.DrawWithProjection")
 
 	for _, o := range opts {
 		o(svg)
@@ -224,7 +221,6 @@ func (svg *SVG) points() [][]float64 {
 
 // process draws the given geometry to the svg canvas (the writer)
 func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.process")
 	switch {
 	case g.IsPoint():
 		drawPoint(sf, w, g.Point, attributes, title)
@@ -282,14 +278,12 @@ func collect(g *geojson.Geometry) (ps [][]float64) {
 }
 
 func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawPoint")
 	x, y := sf(p[0], p[1])
 	endTag := endTag("circle", title)
 	fmt.Fprintf(w, `<circle cx="%f" cy="%f" r="1"%s%s`, x, y, attributes, endTag)
 }
 
 func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPoint")
 	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
 		fmt.Fprintf(w, `<title>%s</title>`, title)
@@ -301,7 +295,6 @@ func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 }
 
 func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawLineString")
 	path := bytes.NewBufferString("M")
 	for _, p := range ps {
 		x, y := sf(p[0], p[1])
@@ -312,7 +305,6 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiLineString")
 	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
 		fmt.Fprintf(w, `<title>%s</title>`, title)
@@ -324,7 +316,6 @@ func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attribute
 }
 
 func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawPolygon")
 	path := bytes.NewBufferString("")
 	for _, ps := range pps {
 		subPath := bytes.NewBufferString(" M")
@@ -338,7 +329,6 @@ func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPolygon")
 	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
 		fmt.Fprintf(w, `<title>%s</title>`, title)
@@ -351,7 +341,6 @@ func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attribute
 
 // endTag creates an end tag string, "/>" if title is empty, "><title>title</title></tag>" otherwise.
 func endTag(tag string, title string) string {
-	defer health.RecordTime(time.Now(), "geojson2svg.endTag")
 	if len(title) > 0 {
 		return fmt.Sprintf("><title>%s</title></%s>", title, tag)
 	}
@@ -360,7 +349,6 @@ func endTag(tag string, title string) string {
 
 // getFeatureAttributesAndTitle converts the properties of the feature into a string of attributes, and extracts the title property into a string
 func getFeatureAttributesAndTitle(useProp func(string) bool, titleProp string, feature *geojson.Feature) (string, string) {
-	defer health.RecordTime(time.Now(), "geojson2svg.getFeatureAttributesAndTitle")
 	attrs := make(map[string]string)
 	id, isString := feature.ID.(string)
 	if isString && len(id) > 0 {
@@ -380,7 +368,6 @@ func getFeatureAttributesAndTitle(useProp func(string) bool, titleProp string, f
 
 // makeAttributes converts the given map into a string with each key="value" pair in sorted order
 func makeAttributes(as map[string]string) string {
-	defer health.RecordTime(time.Now(), "geojson2svg.makeAttributes")
 	keys := make([]string, 0, len(as))
 	for k := range as {
 		keys = append(keys, k)
@@ -429,7 +416,6 @@ func (svg *SVG) getBoundingRectangle(projection ScaleFunc, ps [][]float64) (floa
 
 // calcBoundingRectangle calculates the minX, minY, maxX, maxY coordinates of the svg.
 func calcBoundingRectangle(projection ScaleFunc, ps [][]float64) *boundingRectangle {
-	defer health.RecordTime(time.Now(), "geojson2svg.calcBoundingRectangle")
 	if len(ps) == 0 || len(ps[0]) == 0 {
 		return &boundingRectangle{}
 	}
@@ -457,7 +443,6 @@ func (svg *SVG) GetHeightForWidth(width float64, projection ScaleFunc) float64 {
 
 // MercatorProjection is a projection function that will convert latitude & logitude into x,y coordinates for a Mercator map.
 var MercatorProjection = func(longitude, latitude float64) (float64, float64) {
-	defer health.RecordTime(time.Now(), "geojson2svg.MercatorProjection")
 	// https://stackoverflow.com/questions/38270132/topojson-d3-map-with-longitude-latitude
 	mapWidth, mapHeight := 100.0, 100.0
 	// get x value
@@ -475,7 +460,6 @@ var MercatorProjection = func(longitude, latitude float64) (float64, float64) {
 
 // areaOfPolygon returns the signed area of the polygon described by the path
 func areaOfPolygon(sf ScaleFunc, path [][]float64) float64 {
-	defer health.RecordTime(time.Now(), "geojson2svg.areaOfPolygon")
 	s := 0.0
 
 	for i := 0; i < len(path)-1; i++ {
@@ -495,7 +479,6 @@ func areaOfPolygon(sf ScaleFunc, path [][]float64) float64 {
 // where Euclidean approximations break down.
 // adapted from https://github.com/kpawlik/geojson/issues/3
 func Centroid(sf ScaleFunc, poly [][][]float64) []float64 {
-	defer health.RecordTime(time.Now(), "geojson2svg.Centroid")
 
 	// find the path describing the largest polygon by area
 	var ring [][]float64

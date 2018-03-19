@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/ONSdigital/go-ns/log"
-	"time"
-	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 const (
@@ -95,7 +93,6 @@ func (exe *executablePNGConverter) Convert(svg []byte) ([]byte, error) {
 // IncludeFallbackImage inserts a foreignObject with a fallback png image.
 // thanks to http://davidensinger.com/2013/04/inline-svg-with-png-fallback/
 func (exe *executablePNGConverter) IncludeFallbackImage(attributes string, content string) string {
-	defer health.TrackTime(time.Now(), "geojson2svg.IncludeFallbackImage")
 	svgString := fmt.Sprintf(`<svg %s>%s\n</svg>`, attributes, content)
 	png, err := exe.Convert([]byte(svgString))
 	pngString := "<p>Unsupported Browser</p>"

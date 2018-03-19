@@ -10,8 +10,6 @@ import (
 	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
-	"time"
-	"github.com/ONSdigital/dp-map-renderer/health"
 )
 
 // RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
@@ -58,7 +56,6 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 
 // RenderSVG generates an SVG map for the given request
 func RenderSVG(svgRequest *SVGRequest) string {
-	defer health.TrackTime(time.Now(), "renderer.RenderSVG")
 
 	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
@@ -88,7 +85,6 @@ func RenderSVG(svgRequest *SVGRequest) string {
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
 func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
-	defer health.TrackTime(time.Now(), "renderer.getGeoJSON")
 	// sanity check
 	if request.Geography == nil ||
 		request.Geography.Topojson == nil ||
@@ -105,7 +101,6 @@ func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
 // note that this means that the request should only specify height if it has specified width, otherwise the dimensions will be wrong.
 // The third response argument is the height that should be used for the viewBox - this may be different to the height specified in the request.
 func getWidthAndHeight(request *models.RenderRequest, svg *g2s.SVG) (float64, float64, float64) {
-	defer health.TrackTime(time.Now(), "renderer.getWidthAndHeight")
 	width := request.Width
 	if width <= 0 {
 		width = 400.0
@@ -212,7 +207,6 @@ func sortBreaks(breaks []*models.ChoroplethBreak, asc bool) []*models.Choropleth
 
 // RenderHorizontalKey creates an SVG containing a horizontally-oriented key for the choropleth
 func RenderHorizontalKey(svgRequest *SVGRequest) string {
-	defer health.TrackTime(time.Now(), "renderer.RenderHorizontalKey")
 
 	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
@@ -258,7 +252,6 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
 // TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
 func RenderVerticalKey(svgRequest *SVGRequest) string {
-	defer health.TrackTime(time.Now(), "renderer.RenderVerticalKey")
 
 	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
