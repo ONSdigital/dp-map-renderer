@@ -30,7 +30,7 @@ func TestRenderSVG(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg width="400" height="748" viewBox="0 0 400 748">`)
@@ -47,7 +47,7 @@ func TestRenderSVGDoesNotIncludeFallbackPng(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg `)
@@ -68,7 +68,7 @@ func TestRenderSVGIncludesFallbackPng(t *testing.T) {
 		}
 		renderRequest.IncludeFallbackPng = true
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg `)
@@ -85,7 +85,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 			Filename: "testname",
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldEqual, "")
 	})
@@ -97,7 +97,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 			Geography: &models.Geography{},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldEqual, "")
 	})
@@ -110,7 +110,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 		}
 		renderRequest.Geography.Topojson.Objects = nil
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldEqual, "")
 	})
@@ -123,7 +123,7 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 		}
 		renderRequest.Geography.Topojson.Arcs = nil
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldEqual, "")
 	})
@@ -138,7 +138,7 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -154,7 +154,7 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 			Width:     800,
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -171,7 +171,7 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 			Height:    600,
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -190,7 +190,7 @@ func TestSVGHasCorrectViewBox(t *testing.T) {
 		}
 		renderRequest.Height = 600
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -209,7 +209,7 @@ func TestSVGContainsClassName(t *testing.T) {
 		}
 		renderRequest.Geography.Topojson.Objects["simplegeojson"].Geometries[0].Properties["class"] = "foo"
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -228,7 +228,7 @@ func TestSVGContainsIDs(t *testing.T) {
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
@@ -247,7 +247,7 @@ func TestSVGContainsTitles(t *testing.T) {
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		svg, e := unmarshalSimpleSVG(result)
@@ -269,7 +269,7 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 			Data:       []*models.DataRow{{ID: "f0", Value: 10}, {ID: "f1", Value: 20}},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		svg, e := unmarshalSimpleSVG(result)
@@ -294,7 +294,7 @@ func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 			Data: []*models.DataRow{{ID: "f1", Value: 20}},
 		}
 
-		result := RenderSVG(renderRequest)
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		svg, e := unmarshalSimpleSVG(result)
@@ -317,7 +317,7 @@ func TestRenderVerticalKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		result := RenderVerticalKey(renderRequest)
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
@@ -338,7 +338,7 @@ func TestRenderVerticalKeyWithoutReferenceValue(t *testing.T) {
 		renderRequest.Choropleth.ReferenceValue = 0
 		renderRequest.Choropleth.ReferenceValueText = ""
 
-		result := RenderVerticalKey(renderRequest)
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
@@ -356,7 +356,7 @@ func TestRenderHorizontalKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
@@ -379,7 +379,7 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		renderRequest.Choropleth.ValuePrefix = "This is a long-ish prefix"
 		renderRequest.Choropleth.ValueSuffix = "This is a longer suffix. It needs to be wider than the svg to test that the text is compressed"
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
@@ -401,7 +401,7 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		}
 		renderRequest.Choropleth.ReferenceValueText = "This is a longer bit of text"
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
@@ -424,7 +424,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		renderRequest.Choropleth.ReferenceValue = 28
 		renderRequest.Choropleth.ReferenceValueText = "This is a much longer bit of text that will shorten the key"
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
@@ -447,7 +447,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		renderRequest.Choropleth.ReferenceValue = 13
 		renderRequest.Choropleth.ReferenceValueText = "This is a much longer bit of text that will shorten the key"
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
@@ -471,7 +471,7 @@ func TestRenderHorizontalKeyHasFallbackPng(t *testing.T) {
 		}
 		renderRequest.IncludeFallbackPng = true
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldContainSubstring, `<foreignObject>`)
@@ -491,7 +491,7 @@ func TestRenderHorizontalKeyDoesNotHaveFallbackPng(t *testing.T) {
 		}
 		renderRequest.IncludeFallbackPng = false
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg `)
@@ -513,7 +513,7 @@ func TestRenderVerticalKeyHasFallbackPng(t *testing.T) {
 		}
 		renderRequest.IncludeFallbackPng = true
 
-		result := RenderVerticalKey(renderRequest)
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldContainSubstring, `<foreignObject>`)
@@ -533,7 +533,7 @@ func TestRenderVerticalKeyDoesNotHaveFallbackPng(t *testing.T) {
 		}
 		renderRequest.IncludeFallbackPng = false
 
-		result := RenderVerticalKey(renderRequest)
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg `)
@@ -553,7 +553,7 @@ func TestRenderHorizontalKeyHasCorrectUpperBound(t *testing.T) {
 		}
 		renderRequest.Choropleth.UpperBound = 53
 
-		result := RenderHorizontalKey(renderRequest)
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
 		So(result, ShouldNotContainSubstring, `>54<`)
@@ -573,13 +573,13 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 		}
 		renderRequest.Choropleth.ValueSuffix = "short text"
 
-		result := RenderVerticalKey(renderRequest)
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		defaultWidth := getWidth(result)
 
 		Convey("A long title should cause the width to increase", func() {
 			renderRequest.Choropleth.ValueSuffix = "some text long enough to increase the width...."
-			width := getWidth(RenderVerticalKey(renderRequest))
+			width := getWidth(RenderVerticalKey(PrepareSVGRequest(renderRequest)))
 
 			So(width, ShouldBeGreaterThan, defaultWidth)
 
@@ -588,7 +588,7 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 		Convey("A long reference text should cause the width to increase", func() {
 			renderRequest.Choropleth.ValueSuffix = "short text"
 			renderRequest.Choropleth.ReferenceValueText = "some text long enough to increase the width..."
-			width := getWidth(RenderVerticalKey(renderRequest))
+			width := getWidth(RenderVerticalKey(PrepareSVGRequest(renderRequest)))
 
 			So(width, ShouldBeGreaterThan, defaultWidth)
 
@@ -599,7 +599,7 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 			renderRequest.Choropleth.ReferenceValueText = ".."
 			renderRequest.Choropleth.Breaks[0].LowerBound = 123456.123456
 			renderRequest.Choropleth.ReferenceValue = 123456.123456
-			width := getWidth(RenderVerticalKey(renderRequest))
+			width := getWidth(RenderVerticalKey(PrepareSVGRequest(renderRequest)))
 
 			So(width, ShouldBeGreaterThan, defaultWidth)
 

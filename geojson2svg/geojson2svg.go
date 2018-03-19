@@ -122,7 +122,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
 
 	if svg.pngConverter == nil {
-		return fmt.Sprintf(`<svg %s>%s\n</svg>`, attributes, content)
+		return fmt.Sprintf(`<svg %s>%s</svg>`, attributes, content)
 	}
 	return svg.pngConverter.IncludeFallbackImage(attributes, content.String())
 }
@@ -204,6 +204,7 @@ func UseProperties(props []string) Option {
 	}
 }
 
+// points returns an array of all coordinates (points) in the svg. Note that these points have not had any projection applied.
 func (svg *SVG) points() [][]float64 {
 	ps := [][]float64{}
 	for _, e := range svg.elements {
@@ -221,6 +222,7 @@ func (svg *SVG) points() [][]float64 {
 	return ps
 }
 
+// process draws the given geometry to the svg canvas (the writer)
 func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.process")
 	switch {
@@ -237,17 +239,18 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, 
 	case g.IsMultiPolygon():
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes, title)
 	case g.IsCollection():
-		fmt.Fprintf(w, `\n<g%s>`, attributes)
+		fmt.Fprintf(w, `<g%s>`, attributes)
 		if len(title) > 0 {
-			fmt.Fprintf(w, `\n<title>%s</title>`, title)
+			fmt.Fprintf(w, `<title>%s</title>`, title)
 		}
 		for _, x := range g.Geometries {
 			process(sf, w, x, "", "")
 		}
-		w.Write([]byte(`\n</g>`))
+		w.Write([]byte(`</g>`))
 	}
 }
 
+// collect collects all points in the given geometry into a slice of []float64
 func collect(g *geojson.Geometry) (ps [][]float64) {
 	switch {
 	case g.IsPoint():
@@ -282,19 +285,19 @@ func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string, title 
 	defer health.RecordTime(time.Now(), "geojson2svg.drawPoint")
 	x, y := sf(p[0], p[1])
 	endTag := endTag("circle", title)
-	fmt.Fprintf(w, `\n<circle cx="%f" cy="%f" r="1"%s%s`, x, y, attributes, endTag)
+	fmt.Fprintf(w, `<circle cx="%f" cy="%f" r="1"%s%s`, x, y, attributes, endTag)
 }
 
 func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPoint")
-	fmt.Fprintf(w, `\n<g%s>`, attributes)
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `\n<title>%s</title>`, title)
+		fmt.Fprintf(w, `<title>%s</title>`, title)
 	}
 	for _, p := range ps {
 		drawPoint(sf, w, p, "", "")
 	}
-	w.Write([]byte(`\n</g>`))
+	w.Write([]byte(`</g>`))
 }
 
 func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
@@ -305,19 +308,19 @@ func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	fmt.Fprintf(w, `\n<path d="%s"%s%s`, trim(path), attributes, endTag)
+	fmt.Fprintf(w, `<path d="%s"%s%s`, trim(path), attributes, endTag)
 }
 
 func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiLineString")
-	fmt.Fprintf(w, `\n<g%s>`, attributes)
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `\n<title>%s</title>`, title)
+		fmt.Fprintf(w, `<title>%s</title>`, title)
 	}
 	for _, ps := range pps {
 		drawLineString(sf, w, ps, "", "")
 	}
-	w.Write([]byte(`\n</g>`))
+	w.Write([]byte(`</g>`))
 }
 
 var singleSpace = []byte(" ")
@@ -336,19 +339,20 @@ func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string
 		}
 		path.Write([]byte(trim(subPath)))
 	}
-	w.Write([]byte(`\n<path d="` + trim(path) + ` Z"` + attributes + endTag("path", title)))
+	//fmt.Fprintf(w, `<path d="%s Z"%s%s`, trim(path), attributes, endTag("path", title))
+	w.Write([]byte(`<path d="` + trim(path) + ` Z"` + attributes + endTag("path", title)))
 }
 
 func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
 	defer health.RecordTime(time.Now(), "geojson2svg.drawMultiPolygon")
-	fmt.Fprintf(w, `\n<g%s>`, attributes)
+	fmt.Fprintf(w, `<g%s>`, attributes)
 	if len(title) > 0 {
-		fmt.Fprintf(w, `\n<title>%s</title>`, title)
+		fmt.Fprintf(w, `<title>%s</title>`, title)
 	}
 	for _, pps := range ppps {
 		drawPolygon(sf, w, pps, "", "")
 	}
-	w.Write([]byte(`\n</g>`))
+	w.Write([]byte(`</g>`))
 }
 
 func trim(s *bytes.Buffer) string {
@@ -428,7 +432,6 @@ func (svg *SVG) makeScaleFunc(width, height float64, padding Padding, ps [][]flo
 
 // getBoundingRectangle calculates (and caches) the minX, minY, maxX, maxY coordinates of the svg
 func (svg *SVG) getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float64, float64, float64) {
-	defer health.RecordTime(time.Now(), "geojson2svg.getBoundingRectangle")
 	if svg.bounds == nil {
 		svg.bounds = calcBoundingRectangle(projection, ps)
 	}
@@ -524,7 +527,7 @@ func Centroid(sf ScaleFunc, poly [][][]float64) []float64 {
 		c[1] += (i1 + j1) * (i0*j1 - j0*i1)
 	}
 
-	c[0] /= (area * 6)
-	c[1] /= (area * 6)
+	c[0] /= area * 6
+	c[1] /= area * 6
 	return c
 }

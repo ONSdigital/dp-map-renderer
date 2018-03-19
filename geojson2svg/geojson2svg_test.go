@@ -17,17 +17,13 @@ import (
 func trimSpace(s string) string {
 	res := bytes.NewBufferString("")
 	for _, l := range strings.Split(s, "\n") {
-		fmt.Fprintf(res, "%s\n", strings.TrimSpace(l))
+		res.WriteString(strings.TrimSpace(l))
 	}
-	return strings.Trim(res.String(), "\n")
-}
-
-func insertNewLine(s string) string {
-	return strings.Replace(s, "><", ">\n<", -1)
+	return res.String()
 }
 
 func empty(t *testing.T) {
-	expected := insertNewLine(`<svg width="400" height="400.45"></svg>`)
+	expected := `<svg width="400" height="400.45"></svg>`
 
 	svg := geojson2svg.New()
 	got := svg.Draw(400, 400.45)
@@ -307,7 +303,7 @@ func TestSVGAttributeOptions(t *testing.T) {
 }
 
 func withAttributeOption(t *testing.T) {
-	want := insertNewLine(`<svg width="200" height="200" class="a_class" id="the_id"></svg>`)
+	want := `<svg width="200" height="200" class="a_class" id="the_id"></svg>`
 	svg := geojson2svg.New()
 	got := svg.Draw(200, 200,
 		geojson2svg.WithAttribute("id", "the_id"),
@@ -319,7 +315,7 @@ func withAttributeOption(t *testing.T) {
 }
 
 func withAttributeMultipleTimesOption(t *testing.T) {
-	want := insertNewLine(`<svg width="200" height="200" class="a_class_2" id="the_id_2"></svg>`)
+	want := `<svg width="200" height="200" class="a_class_2" id="the_id_2"></svg>`
 	svg := geojson2svg.New()
 	got := svg.Draw(200, 200,
 		geojson2svg.WithAttribute("id", "the_id"),
@@ -333,7 +329,7 @@ func withAttributeMultipleTimesOption(t *testing.T) {
 }
 
 func withAttributesOption(t *testing.T) {
-	want := insertNewLine(`<svg width="200" height="200" class="a_class" id="the_id"></svg>`)
+	want := `<svg width="200" height="200" class="a_class" id="the_id"></svg>`
 
 	attributes := map[string]string{
 		"id":    "the_id",
@@ -349,7 +345,7 @@ func withAttributesOption(t *testing.T) {
 }
 
 func withAttributesNothingIsLostOption(t *testing.T) {
-	want := insertNewLine(`<svg width="200" height="200" class="a_class_2" id="the_id"></svg>`)
+	want := `<svg width="200" height="200" class="a_class_2" id="the_id"></svg>`
 
 	attributesA := map[string]string{"id": "the_id", "class": "a_class"}
 	attributesB := map[string]string{"class": "a_class_2"}
@@ -374,11 +370,11 @@ func TestSVGPaddingOption(t *testing.T) {
 		{"without padding",
 			"[[0,0], [0,400], [400,400], [400,0]]",
 			geojson2svg.Padding{Top: 0, Right: 0, Bottom: 0, Left: 0},
-			insertNewLine(`<svg width="200" height="200"><path d="M0.000000 200.000000,0.000000 0.000000,200.000000 0.000000,200.000000 200.000000"/></svg>`)},
+			`<svg width="200" height="200"><path d="M0.000000 200.000000,0.000000 0.000000,200.000000 0.000000,200.000000 200.000000"/></svg>`},
 		{"with padding",
 			"[[0,0], [0,400], [400,400], [400,0]]",
 			geojson2svg.Padding{Top: 5, Right: 5, Bottom: 5, Left: 5},
-			insertNewLine(`<svg width="200" height="200"><path d="M5.000000 195.000000,5.000000 5.000000,195.000000 5.000000,195.000000 195.000000"/></svg>`)},
+			`<svg width="200" height="200"><path d="M5.000000 195.000000,5.000000 5.000000,195.000000 5.000000,195.000000 195.000000"/></svg>`},
 	}
 
 	for _, tc := range tcs {
@@ -404,77 +400,77 @@ func TestFeatureProperties(t *testing.T) {
 		{"no props (point)",
 			`{"type": "Feature", "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`},
 		{"with class (point)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" class="class"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" class="class"/></svg>`},
 		{"with class and unused (point)",
 			`{"type": "Feature", "properties": {"class": "class", "style": "stroke:1"}, "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" class="class"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" class="class"/></svg>`},
 		{"with unused (point)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`},
 		{"with added props (point)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			[]string{"style"},
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" style="stroke:1"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1" style="stroke:1"/></svg>`},
 		{"with class removed (point)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "Point", "coordinates": [10.5,20] }}`,
 			[]string{},
-			insertNewLine(`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`)},
+			`<svg width="400" height="400"><circle cx="200.000000" cy="200.000000" r="1"/></svg>`},
 
 		{"no props (linestring)",
 			`{"type": "Feature", "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`},
 		{"with class (linestring)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" class="class"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" class="class"/></svg>`},
 		{"with class and unused (linestring)",
 			`{"type": "Feature", "properties": {"class": "class", "style": "stroke:1"}, "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" class="class"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" class="class"/></svg>`},
 		{"with unused (linestring)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`},
 		{"with added props (linestring)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			[]string{"style"},
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" style="stroke:1"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000" style="stroke:1"/></svg>`},
 		{"with class removed (linestring)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "LineString", "coordinates": [[10.4,20.5], [40.3,42.3]] }}`,
 			[]string{},
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 291.638796,400.000000 0.000000"/></svg>`},
 
 		{"no props (polygon)",
 			`{"type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`},
 		{"with class (polygon)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" class="class"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" class="class"/></svg>`},
 		{"with class and unused (polygon)",
 			`{"type": "Feature", "properties": {"class": "class", "style": "stroke:1"}, "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" class="class"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" class="class"/></svg>`},
 		{"with unused (polygon)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			nil,
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`},
 		{"with added props (polygon)",
 			`{"type": "Feature", "properties": {"style": "stroke:1"}, "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			[]string{"style"},
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" style="stroke:1"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z" style="stroke:1"/></svg>`},
 		{"with class removed (polygon)",
 			`{"type": "Feature", "properties": {"class": "class"}, "geometry": { "type": "Polygon", "coordinates": [[[10.4,20.5], [40.3,42.3], [20.2, 10.2], [10.4,20.5]]] }}`,
 			[]string{},
-			insertNewLine(`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`)},
+			`<svg width="400" height="400"><path d="M0.000000 271.651090,372.585670 0.000000,122.118380 400.000000,0.000000 271.651090 Z"/></svg>`},
 	}
 
 	for _, tc := range tcs {
@@ -521,7 +517,8 @@ func TestExample(t *testing.T) {
 			Left:   10,
 		}))
 	//ioutil.WriteFile("testdata/example.svg", []byte(got), 0644)
-	if got != string(want) {
-		t.Errorf("\nexpected \n%s\ngot \n%s", string(want), got)
+	wantString := strings.Replace(string(want), "\n", "", -1)
+	if got != wantString {
+		t.Errorf("\nexpected \n%s\ngot \n%s", wantString, got)
 	}
 }
