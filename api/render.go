@@ -30,7 +30,7 @@ func (api *RendererAPI) renderMap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	renderType := vars["render_type"]
 
-	log.Debug("renderMap", log.Data{"headers": r.Header})
+	log.Debug("renderMap", log.Data{"headers": r.Header, "render_type": renderType})
 	renderRequest, err := models.CreateRenderRequest(r.Body)
 	if err != nil {
 		log.Error(err, nil)

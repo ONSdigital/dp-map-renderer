@@ -15,13 +15,18 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-const svgReplacementText = "[SVG Here]"
-const verticalKeyReplacementText = "[Vertical key Here]"
-const horizontalKeyReplacementText = "[Horizontal key Here]"
+const (
+	svgReplacementText = "[SVG Here]"
+	verticalKeyReplacementText = "[Vertical key Here]"
+	horizontalKeyReplacementText = "[Horizontal key Here]"
+)
 
 var (
 	newLine      = regexp.MustCompile(`\n`)
 	footnoteLink = regexp.MustCompile(`\[[0-9]+]`)
+
+	widthPattern = regexp.MustCompile(`width="[^"]*"`)
+	heightPattern = regexp.MustCompile(`height="[^"]+"`)
 
 	// text that will need internationalising at some point:
 	sourceText         = "Source: "
@@ -191,9 +196,6 @@ func renderPNGs(request *models.RenderRequest, original string) string {
 	}
 	return result
 }
-
-var widthPattern = regexp.MustCompile(`width="[^"]*"`)
-var heightPattern = regexp.MustCompile(`height="[^"]+"`)
 
 // renderPNG converts the given svg to a png, retaining the width and height attributes
 func renderPNG(svg string) string {
