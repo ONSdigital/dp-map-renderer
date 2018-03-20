@@ -6,11 +6,12 @@ import (
 	"math"
 	"sort"
 
+	"strings"
+
 	g2s "github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 	"github.com/ONSdigital/dp-map-renderer/models"
 	"github.com/paulmach/go.geojson"
-	"strings"
 )
 
 // RegionClassName is the name of the class assigned to all map regions (denoted by features in the input topology)
@@ -19,6 +20,7 @@ const RegionClassName = "mapRegion"
 // MissingDataText is the text appended to the title of a region that has missing data
 const MissingDataText = "data unavailable"
 
+// MissingDataPattern is the fmt template used to generate the pattern used for regions with missing data
 const MissingDataPattern = `<pattern id="%s-nodata" width="20" height="20" patternUnits="userSpaceOnUse">
 <g fill="#6D6E72">
 <polygon points="00 00 02 00 00 02 00 00"></polygon>
@@ -67,7 +69,7 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 		width, height, viewBoxHeight = getWidthAndHeight(request, svg)
 	}
 
-	return &SVGRequest{request: request, geoJSON: geoJSON, svg:svg, width:width, height:height, viewBoxHeight:viewBoxHeight}
+	return &SVGRequest{request: request, geoJSON: geoJSON, svg: svg, width: width, height: height, viewBoxHeight: viewBoxHeight}
 }
 
 // RenderSVG generates an SVG map for the given request
@@ -97,7 +99,7 @@ func RenderSVG(svgRequest *SVGRequest) string {
 	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
-		g2s.WithAttribute("id", mapID(request) + "-svg"),
+		g2s.WithAttribute("id", mapID(request)+"-svg"),
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
 		g2s.WithPNGFallback(converter),
 		g2s.WithPattern(missingDataPattern))
@@ -304,7 +306,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	fmt.Fprint(content, ticks.String())
 	content.WriteString(`</g>`)
 
-	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12)) / 2
+	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize)+12)) / 2
 	writeKeyMissingPattern(content, request.Filename, xPos, svgHeight*0.95)
 
 	content.WriteString(`</g>`)

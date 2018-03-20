@@ -19,8 +19,7 @@ const (
 	// ArgPNGFilename is text that will be replaced with name of the png file to write when invoking the PNGConverter executable
 	ArgPNGFilename = "<PNG>"
 	// svgSwitchTemplate is a template for formatting an svg switch element to insert a fallback image for browsers that can't render svg
-	svgSwitchTemplate =
-`<svg %s>
+	svgSwitchTemplate = `<svg %s>
 	<switch>
 		<g>
 %s
@@ -30,7 +29,6 @@ const (
 </svg>`
 	// letterBytes is used to generate a random text string for use as a file name
 	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
 )
 
 // PNGConverter invokes an executable file to convert an svg file to png

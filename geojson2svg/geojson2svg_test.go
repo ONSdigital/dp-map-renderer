@@ -417,7 +417,7 @@ func TestSVGWithFallbackAndPattern(t *testing.T) {
 	pattern := `<pattern id="foo"><g><polygon points="00 00 02 00 00 02 00 00"></polygon></g></pattern>"`
 	svg := geojson2svg.New()
 	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[0,0], [0,400], [400,400], [400,0]]}`)
-	pngConverter :=  geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
+	pngConverter := geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
 	got := svg.Draw(200, 200, geojson2svg.WithPattern(pattern), geojson2svg.WithPNGFallback(pngConverter))
 
 	if !strings.Contains(got, "<foreignObject>") {

@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/paulmach/go.geojson"
 	"github.com/ONSdigital/go-ns/log"
+	"github.com/paulmach/go.geojson"
 )
 
 // ElementType represents the elements that may be represented in an SVG
@@ -126,7 +126,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	if svg.pngConverter == nil {
 		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, patterns, content)
 	}
-	return svg.pngConverter.IncludeFallbackImage(attributes, patterns + content.String())
+	return svg.pngConverter.IncludeFallbackImage(attributes, patterns+content.String())
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -321,7 +321,7 @@ func drawLineString(sf ScaleFunc, w io.Writer, points [][]float64, attributes st
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	w.Write([]byte(`<path d="` + strings.TrimSuffix(path.String(), ",") + `"` +  attributes + endTag))
+	w.Write([]byte(`<path d="` + strings.TrimSuffix(path.String(), ",") + `"` + attributes + endTag))
 }
 
 // drawMultiLineString draws multiple lines (paths), grouped together in a <g> tag
@@ -372,7 +372,7 @@ func drawGroupEnd(w io.Writer) {
 // endTag creates an end tag string "/>" if title is empty, "><title>title</title></tag>" otherwise.
 func endTag(tag string, title string) string {
 	if len(title) > 0 {
-		return "><title>" + title + "</title></" +  tag + ">"
+		return "><title>" + title + "</title></" + tag + ">"
 	}
 	return "/>"
 }

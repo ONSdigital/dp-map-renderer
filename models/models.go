@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 
 	"github.com/ONSdigital/go-ns/log"
-	"github.com/rubenv/topojson"
 	"github.com/json-iterator/go"
+	"github.com/rubenv/topojson"
 )
 
 // A list of errors returned from package

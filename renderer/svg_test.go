@@ -616,7 +616,7 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 		So(result, ShouldContainSubstring, "fill: "+b.Colour)
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
-	So(result, ShouldContainSubstring, "fill: url(#"+renderRequest.Filename + "-nodata)")
+	So(result, ShouldContainSubstring, "fill: url(#"+renderRequest.Filename+"-nodata)")
 	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
