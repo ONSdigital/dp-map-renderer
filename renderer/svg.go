@@ -25,34 +25,58 @@ func UsePNGConverter(p g2s.PNGConverter) {
 	pngConverter = p
 }
 
+// valueAndColour represents a choropleth data point, which has both a numeric value and an associated colour
 type valueAndColour struct {
 	value  float64
 	colour string
 }
 
-// RenderSVG generates an SVG map for the given request
-func RenderSVG(request *models.RenderRequest) string {
+// SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as converting topojson to geojson)
+type SVGRequest struct {
+	request                      *models.RenderRequest
+	geoJSON                      *geojson.FeatureCollection
+	svg                          *g2s.SVG
+	width, height, viewBoxHeight float64
+}
 
+// PrepareSVGRequest wraps the request in an SVGRequest, caching expensive calculations up front
+func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 	geoJSON := getGeoJSON(request)
+
+	svg := g2s.New()
+	svg.AppendFeatureCollection(geoJSON)
+
+	width, height, viewBoxHeight := 0.0, 0.0, 0.0
+	if geoJSON != nil {
+		width, height, viewBoxHeight = getWidthAndHeight(request, svg)
+	}
+
+	return &SVGRequest{request: request, geoJSON: geoJSON, svg:svg, width:width, height:height, viewBoxHeight:viewBoxHeight}
+}
+
+// RenderSVG generates an SVG map for the given request
+func RenderSVG(svgRequest *SVGRequest) string {
+
+	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
 		return ""
 	}
+	request := svgRequest.request
+	width := svgRequest.width
+	height := svgRequest.height
+	vbHeight := svgRequest.viewBoxHeight
 
 	idPrefix := request.Filename + "-"
 	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, idPrefix)
 	setClassProperty(geoJSON.Features, RegionClassName)
 	setChoroplethColoursAndTitles(geoJSON.Features, request, idPrefix)
 
-	svg := g2s.New()
-	svg.AppendFeatureCollection(geoJSON)
-
 	converter := pngConverter
 	if !request.IncludeFallbackPng {
 		converter = nil
 	}
 
-	width, height, vbHeight := getWidthAndHeight(request, svg)
-	return svg.DrawWithProjection(width, height, g2s.MercatorProjection,
+	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
@@ -182,15 +206,14 @@ func sortBreaks(breaks []*models.ChoroplethBreak, asc bool) []*models.Choropleth
 }
 
 // RenderHorizontalKey creates an SVG containing a horizontally-oriented key for the choropleth
-func RenderHorizontalKey(request *models.RenderRequest) string {
+func RenderHorizontalKey(svgRequest *SVGRequest) string {
 
-	geoJSON := getGeoJSON(request)
+	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
 		return ""
 	}
-	svg := g2s.New()
-	svg.AppendFeatureCollection(geoJSON)
-	svgWidth, _, _ := getWidthAndHeight(request, svg)
+	request := svgRequest.request
+	svgWidth := svgRequest.width
 
 	keyInfo := getHorizontalKeyInfo(svgWidth, request)
 
@@ -198,15 +221,15 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	ticks := bytes.NewBufferString("")
 	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
-	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-container">`, "\n", request.Filename)
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgWidth, content)
-	fmt.Fprintf(content, `%s<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, "\n", request.Filename, keyInfo.keyX)
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, request.Filename, keyInfo.keyX)
 	left := 0.0
 	breaks := keyInfo.breaks
 	for i := 0; i < len(breaks); i++ {
 		width := breaks[i].RelativeSize * keyInfo.keyWidth
-		fmt.Fprintf(content, `%s<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", width, left, breaks[i].Colour)
-		fmt.Fprintf(content, `</rect>`)
+		fmt.Fprintf(content, `<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, width, left, breaks[i].Colour)
+		content.WriteString(`</rect>`)
 		writeHorizontalKeyTick(ticks, left, breaks[i].LowerBound)
 		left += width
 	}
@@ -218,7 +241,7 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 	if len(request.Choropleth.MissingValueColor) > 0 {
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, 0.0, 55.0)
 	}
-	fmt.Fprintf(content, `%s</g>%s</g>%s`, "\n", "\n", "\n")
+	content.WriteString(`</g></g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", svgAttributes, content)
@@ -228,15 +251,14 @@ func RenderHorizontalKey(request *models.RenderRequest) string {
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
 // TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
-func RenderVerticalKey(request *models.RenderRequest) string {
+func RenderVerticalKey(svgRequest *SVGRequest) string {
 
-	geoJSON := getGeoJSON(request)
+	geoJSON := svgRequest.geoJSON
 	if geoJSON == nil {
 		return ""
 	}
-	svg := g2s.New()
-	svg.AppendFeatureCollection(geoJSON)
-	_, svgHeight, _ := getWidthAndHeight(request, svg)
+	request := svgRequest.request
+	svgHeight := svgRequest.height
 
 	breaks, referencePos := getSortedBreakInfo(request)
 
@@ -246,15 +268,15 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 	ticks := bytes.NewBufferString("")
 	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 
-	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-container">`, "\n", request.Filename)
-	fmt.Fprintf(content, `%s<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, "\n", keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `%s<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, "\n", request.Filename, keyWidth/2, svgHeight*0.1)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
+	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, keyWidth/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
 		adjustedPosition := keyHeight - position
-		fmt.Fprintf(content, `%s<rect class="keyColour" height="%f" width="8" y="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, "\n", height, adjustedPosition-height, breaks[i].Colour)
-		fmt.Fprintf(content, `</rect>`)
+		fmt.Fprintf(content, `<rect class="keyColour" height="%f" width="8" y="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, height, adjustedPosition-height, breaks[i].Colour)
+		content.WriteString(`</rect>`)
 		writeVerticalKeyTick(ticks, adjustedPosition, breaks[i].LowerBound)
 		position += height
 	}
@@ -263,12 +285,12 @@ func RenderVerticalKey(request *models.RenderRequest) string {
 		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
 	}
 	fmt.Fprint(content, ticks.String())
-	fmt.Fprintf(content, `%s</g>`, "\n")
+	content.WriteString(`</g>`)
 	if len(request.Choropleth.MissingValueColor) > 0 {
-		xPos := (keyWidth - float64((htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12))) / 2
+		xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12)) / 2
 		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
 	}
-	fmt.Fprintf(content, `%s</g>%s`, "\n", "\n")
+	content.WriteString(`</g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
@@ -310,58 +332,58 @@ func writeHorizontalKeyTitle(request *models.RenderRequest, svgWidth float64, co
 	if titleTextLen >= svgWidth {
 		textAdjust = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-2)
 	}
-	fmt.Fprintf(content, `%s<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"%s>%s</text>`, "\n", svgWidth/2.0, textAdjust, titleText)
+	fmt.Fprintf(content, `<text x="%f" y="6" dy=".5em" style="text-anchor: middle;" class="keyText"%s>%s</text>`, svgWidth/2.0, textAdjust, titleText)
 }
 
 // writeHorizontalKeyTick draws a vertical line (the tick) at the given position, labelling it with the given value
 func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
-	fmt.Fprintf(w, `%s<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, "\n", value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+	w.WriteString(`<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`)
+	fmt.Fprintf(w, `<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, value)
+	w.WriteString(`</g>`)
 }
 
 // writeVerticalKeyTick draws a horizontal line (the tick) at the given position, labelling it with the given value
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
-	fmt.Fprintf(w, `%s<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, "\n", value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+	w.WriteString(`<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`)
+	fmt.Fprintf(w, `<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, value)
+	w.WriteString(`</g>`)
 }
 
 // writeHorizontalKeyRefTick draws a vertical line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
 	xPos := keyInfo.keyWidth * keyInfo.referencePos
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(%f, 0)">`, "\n", xPos)
-	fmt.Fprintf(w, `%s<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
+	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+	w.WriteString(`<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`)
 	textAttr := ""
 	if keyInfo.referenceTextLeftLen > xPos+keyInfo.keyX { // adjust the text length so it will fit
 		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, xPos+keyInfo.keyX-1)
 	}
-	fmt.Fprintf(w, `%s<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, "\n", textAttr, keyInfo.referenceTextLeft)
+	fmt.Fprintf(w, `<text x="0" y="33" dx="-0.1em" dy=".74em" style="text-anchor: end; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextLeft)
 	textAttr = ""
 	if keyInfo.referenceTextRightLen > svgWidth-(xPos+keyInfo.keyX) { // adjust the text length so it will fit
 		textAttr = fmt.Sprintf(` textLength="%.f" lengthAdjust="spacingAndGlyphs"`, svgWidth-(xPos+keyInfo.keyX)-2)
 	}
 	fmt.Fprintf(w, `<text x="0" y="33" dx="0.1em" dy=".74em" style="text-anchor: start; fill: DimGrey;" class="keyText"%s>%s</text>`, textAttr, keyInfo.referenceTextRight)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `</g>`)
 }
 
 // writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
-	fmt.Fprintf(w, `%s<g class="tick" transform="translate(0, %f)">`, "\n", yPos)
-	fmt.Fprintf(w, `%s<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`, "\n")
-	fmt.Fprintf(w, `%s<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", text)
+	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+	w.WriteString(`<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`)
+	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, text)
 	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	w.WriteString(`</g>`)
 }
 
 // writeKeyMissingColour draws a square filled with the missing colour at the given position, labelling it with MissingDataText
 func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
-	fmt.Fprintf(w, `%s<g class="missingColour" transform="translate(%f, %f)">`, "\n", xPos, yPos)
-	fmt.Fprintf(w, `%s<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, "\n", colour)
-	fmt.Fprintf(w, `%s<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, "\n", MissingDataText)
-	fmt.Fprintf(w, `%s</g>`, "\n")
+	fmt.Fprintf(w, `<g class="missingColour" transform="translate(%f, %f)">`, xPos, yPos)
+	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, colour)
+	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, MissingDataText)
+	w.WriteString(`</g>`)
 }
 
 // breakInfo contains information about the breaks (the boundaries between colours)- lowerBound, upperBound and relative size

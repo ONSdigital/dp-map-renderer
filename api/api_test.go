@@ -27,7 +27,6 @@ var (
 var saveTestResponse = true
 
 func TestSuccessfullyRenderSVGMap(t *testing.T) {
-	t.Parallel()
 	Convey("Successfully render an html map with svg images", t, func() {
 
 		renderer.UsePNGConverter(geojson2svg.NewPNGConverter("sh", []string{"-c", "cat testdata/fallback.png >> " + geojson2svg.ArgPNGFilename}))
@@ -51,7 +50,6 @@ func TestSuccessfullyRenderSVGMap(t *testing.T) {
 }
 
 func TestSuccessfullyRenderPNGMap(t *testing.T) {
-	t.Parallel()
 	Convey("Successfully render an html map with png images", t, func() {
 
 		renderer.UsePNGConverter(geojson2svg.NewPNGConverter("sh", []string{"-c", "cat testdata/fallback.png >> " + geojson2svg.ArgPNGFilename}))
@@ -72,7 +70,6 @@ func TestSuccessfullyRenderPNGMap(t *testing.T) {
 }
 
 func TestSuccessfullyAnalyseData(t *testing.T) {
-	t.Parallel()
 	Convey("Successfully analyse data and topology", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleAnalyseRequest(t))
 		r, err := http.NewRequest("POST", analyseURL, reader)
@@ -102,7 +99,9 @@ func TestRejectInvalidRequest(t *testing.T) {
 		So(w.Code, ShouldEqual, http.StatusNotFound)
 		So(w.Body.String(), ShouldResemble, "Unknown render type\n")
 	})
+}
 
+func TestRejectInvalidJSON(t *testing.T) {
 	Convey("When an invalid json message is sent, a bad request is returned", t, func() {
 		reader := strings.NewReader("{")
 		r, err := http.NewRequest("POST", requestSVGURL, reader)
@@ -112,10 +111,6 @@ func TestRejectInvalidRequest(t *testing.T) {
 		api := routes(mux.NewRouter())
 		api.router.ServeHTTP(w, r)
 		So(w.Code, ShouldEqual, http.StatusBadRequest)
-
-		bodyBytes, _ := ioutil.ReadAll(w.Body)
-		response := string(bodyBytes)
-		So(response, ShouldResemble, "unexpected end of JSON input\n")
 	})
 }
 

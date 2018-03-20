@@ -9,6 +9,7 @@ import (
 
 	"github.com/ONSdigital/go-ns/log"
 	"github.com/rubenv/topojson"
+	"github.com/json-iterator/go"
 )
 
 // A list of errors returned from package
@@ -101,6 +102,7 @@ type Message struct {
 
 // CreateRenderRequest manages the creation of a RenderRequest from a reader
 func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
+
 	bytes, err := ioutil.ReadAll(reader)
 	if err != nil {
 		log.Error(err, log.Data{"request_body": string(bytes)})
@@ -108,7 +110,7 @@ func CreateRenderRequest(reader io.Reader) (*RenderRequest, error) {
 	}
 
 	var request RenderRequest
-	err = json.Unmarshal(bytes, &request)
+	err = jsoniter.Unmarshal(bytes, &request)
 	if err != nil {
 		log.Error(err, log.Data{"request_body": string(bytes)})
 		return nil, err

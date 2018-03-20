@@ -172,26 +172,28 @@ func addFooterItemsToList(request *models.RenderRequest, ol *html.Node) {
 
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
 func renderSVGs(request *models.RenderRequest, original string) string {
-	result := strings.Replace(original, svgReplacementText, RenderSVG(request), 1)
+	svgRequest := PrepareSVGRequest(request)
+	result := strings.Replace(original, svgReplacementText, RenderSVG(svgRequest), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
-		result = strings.Replace(result, verticalKeyReplacementText, RenderVerticalKey(request), 1)
+		result = strings.Replace(result, verticalKeyReplacementText, RenderVerticalKey(svgRequest), 1)
 	}
 	if strings.Contains(result, horizontalKeyReplacementText) {
-		result = strings.Replace(result, horizontalKeyReplacementText, RenderHorizontalKey(request), 1)
+		result = strings.Replace(result, horizontalKeyReplacementText, RenderHorizontalKey(svgRequest), 1)
 	}
 	return result
 }
 
 // renderPNGs replaces the SVG marker text with png images
 func renderPNGs(request *models.RenderRequest, original string) string {
-	svg := RenderSVG(request)
+	svgRequest := PrepareSVGRequest(request)
+	svg := RenderSVG(svgRequest)
 	result := strings.Replace(original, svgReplacementText, renderPNG(svg), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
-		key := RenderVerticalKey(request)
+		key := RenderVerticalKey(svgRequest)
 		result = strings.Replace(result, verticalKeyReplacementText, renderPNG(key), 1)
 	}
 	if strings.Contains(result, horizontalKeyReplacementText) {
-		key := RenderHorizontalKey(request)
+		key := RenderHorizontalKey(svgRequest)
 		result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
 	}
 	return result

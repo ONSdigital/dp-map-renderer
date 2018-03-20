@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -25,8 +24,6 @@ const (
 	Feature           ElementType = iota
 	FeatureCollection ElementType = iota
 )
-
-const newline = "\n"
 
 // ScaleFunc accepts x,y coordinates and transforms them, returning a new pair of x,y coordinates.
 type ScaleFunc func(float64, float64) (float64, float64)
@@ -46,6 +43,8 @@ type SVG struct {
 	elements     []*SVGElement
 	titleProp    string
 	pngConverter PNGConverter
+	bounds       *boundingRectangle
+	points       [][]float64
 }
 
 // SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
@@ -71,6 +70,11 @@ type PNGConverter interface {
 	IncludeFallbackImage(svgAttributes string, svgContent string) string
 }
 
+// boundingRectangle is used to cache the result of calculations in getBoundingRectangle
+type boundingRectangle struct {
+	minX, minY, maxX, maxY float64
+}
+
 // New returns a new SVG that can be used to to draw geojson geometries,
 // features and featurecollections.
 func New() *SVG {
@@ -90,11 +94,12 @@ func (svg *SVG) Draw(width, height float64, opts ...Option) string {
 // DrawWithProjection renders the final SVG with the given options to a string.
 // All coordinates will be converted by the given projection, then scaled to fit into the svg.
 func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, opts ...Option) string {
+
 	for _, o := range opts {
 		o(svg)
 	}
 
-	sf := makeScaleFunc(width, height, svg.padding, svg.points(), projection)
+	sf := svg.makeScaleFunc(width, height, projection)
 
 	content := bytes.NewBufferString("")
 	for _, e := range svg.elements {
@@ -115,7 +120,7 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
 
 	if svg.pngConverter == nil {
-		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, content, newline)
+		return fmt.Sprintf(`<svg %s>%s</svg>`, attributes, content)
 	}
 	return svg.pngConverter.IncludeFallbackImage(attributes, content.String())
 }
@@ -123,16 +128,25 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 // AppendGeometry adds a geojson Geometry to the svg.
 func (svg *SVG) AppendGeometry(g *geojson.Geometry) {
 	svg.elements = append(svg.elements, &SVGElement{geometry: g, elementType: Geometry})
+	svg.clearCache()
 }
 
 // AppendFeature adds a geojson Feature to the svg.
 func (svg *SVG) AppendFeature(f *geojson.Feature) {
 	svg.elements = append(svg.elements, &SVGElement{feature: f, elementType: Feature})
+	svg.clearCache()
 }
 
 // AppendFeatureCollection adds a geojson FeatureCollection to the svg.
 func (svg *SVG) AppendFeatureCollection(fc *geojson.FeatureCollection) {
 	svg.elements = append(svg.elements, &SVGElement{featureCollection: fc, elementType: FeatureCollection})
+	svg.clearCache()
+}
+
+// clearCache deletes all internal cached values
+func (svg *SVG) clearCache() {
+	svg.bounds = nil
+	svg.points = [][]float64{}
 }
 
 // WithAttribute adds the key value pair as attribute to the
@@ -189,23 +203,28 @@ func UseProperties(props []string) Option {
 	}
 }
 
-func (svg *SVG) points() [][]float64 {
-	ps := [][]float64{}
-	for _, e := range svg.elements {
-		switch e.elementType {
-		case Geometry:
-			ps = append(ps, collect(e.geometry)...)
-		case Feature:
-			ps = append(ps, collect(e.feature.Geometry)...)
-		case FeatureCollection:
-			for _, f := range e.featureCollection.Features {
-				ps = append(ps, collect(f.Geometry)...)
+// getPoints returns an array of all coordinates (points) in the svg. Note that these points have not had any projection applied.
+func (svg *SVG) getPoints() [][]float64 {
+	if len(svg.points) == 0 {
+		points := [][]float64{}
+		for _, e := range svg.elements {
+			switch e.elementType {
+			case Geometry:
+				points = append(points, collect(e.geometry)...)
+			case Feature:
+				points = append(points, collect(e.feature.Geometry)...)
+			case FeatureCollection:
+				for _, f := range e.featureCollection.Features {
+					points = append(points, collect(f.Geometry)...)
+				}
 			}
 		}
+		svg.points = points
 	}
-	return ps
+	return svg.points
 }
 
+// process draws the given geometry to the svg canvas (the writer)
 func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, title string) {
 	switch {
 	case g.IsPoint():
@@ -221,125 +240,129 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, 
 	case g.IsMultiPolygon():
 		drawMultiPolygon(sf, w, g.MultiPolygon, attributes, title)
 	case g.IsCollection():
-		fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
-		if len(title) > 0 {
-			fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
-		}
+		drawGroupStart(w, attributes, title)
 		for _, x := range g.Geometries {
 			process(sf, w, x, "", "")
 		}
-		fmt.Fprintf(w, `%s</g>`, newline)
+		drawGroupEnd(w)
 	}
 }
 
-func collect(g *geojson.Geometry) (ps [][]float64) {
+// collect appends all points in the given geometry to the given slice, returning the new slice
+func collect(g *geojson.Geometry) (points [][]float64) {
 	switch {
 	case g.IsPoint():
-		ps = append(ps, g.Point)
+		points = append(points, g.Point)
 	case g.IsMultiPoint():
-		ps = append(ps, g.MultiPoint...)
+		points = append(points, g.MultiPoint...)
 	case g.IsLineString():
-		ps = append(ps, g.LineString...)
+		points = append(points, g.LineString...)
 	case g.IsMultiLineString():
 		for _, x := range g.MultiLineString {
-			ps = append(ps, x...)
+			points = append(points, x...)
 		}
 	case g.IsPolygon():
 		for _, x := range g.Polygon {
-			ps = append(ps, x...)
+			points = append(points, x...)
 		}
 	case g.IsMultiPolygon():
 		for _, xs := range g.MultiPolygon {
 			for _, x := range xs {
-				ps = append(ps, x...)
+				points = append(points, x...)
 			}
 		}
 	case g.IsCollection():
 		for _, g := range g.Geometries {
-			ps = append(ps, collect(g)...)
+			points = append(points, collect(g)...)
 		}
 	}
-	return ps
+	return points
 }
 
+// the draw methods use writer.Write where possible as it is faster than fmt.Fprintf, even if it requires string concatenation
+// fmt.Fprintf is only used where values do actually require formatting, e.g. floats.
+
+// drawPoint draws an individual point
 func drawPoint(sf ScaleFunc, w io.Writer, p []float64, attributes string, title string) {
 	x, y := sf(p[0], p[1])
 	endTag := endTag("circle", title)
-	fmt.Fprintf(w, `%s<circle cx="%f" cy="%f" r="1"%s%s`, newline, x, y, attributes, endTag)
+	fmt.Fprintf(w, `<circle cx="%f" cy="%f" r="1"%s%s`, x, y, attributes, endTag)
 }
 
-func drawMultiPoint(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
-	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
-	}
-	for _, p := range ps {
+// drawMultiPoint draws multiple points grouped in a <g> tag
+func drawMultiPoint(sf ScaleFunc, w io.Writer, points [][]float64, attributes string, title string) {
+	drawGroupStart(w, attributes, title)
+	for _, p := range points {
 		drawPoint(sf, w, p, "", "")
 	}
-	fmt.Fprintf(w, `%s</g>`, newline)
+	drawGroupEnd(w)
 }
 
-func drawLineString(sf ScaleFunc, w io.Writer, ps [][]float64, attributes string, title string) {
+// drawLineString draws a single line (path) defined by the array of points
+func drawLineString(sf ScaleFunc, w io.Writer, points [][]float64, attributes string, title string) {
 	path := bytes.NewBufferString("M")
-	for _, p := range ps {
+	for _, p := range points {
 		x, y := sf(p[0], p[1])
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	fmt.Fprintf(w, `%s<path d="%s"%s%s`, newline, trim(path), attributes, endTag)
+	w.Write([]byte(`<path d="` + strings.TrimSuffix(path.String(), ",") + `"` +  attributes + endTag))
 }
 
-func drawMultiLineString(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
-	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+// drawMultiLineString draws multiple lines (paths), grouped together in a <g> tag
+func drawMultiLineString(sf ScaleFunc, w io.Writer, paths [][][]float64, attributes string, title string) {
+	drawGroupStart(w, attributes, title)
+	for _, path := range paths {
+		drawLineString(sf, w, path, "", "")
 	}
-	for _, ps := range pps {
-		drawLineString(sf, w, ps, "", "")
-	}
-	fmt.Fprintf(w, `%s</g>`, newline)
+	drawGroupEnd(w)
 }
 
-func drawPolygon(sf ScaleFunc, w io.Writer, pps [][][]float64, attributes string, title string) {
-	path := bytes.NewBufferString("")
-	for _, ps := range pps {
-		subPath := bytes.NewBufferString("M")
-		for _, p := range ps {
-			x, y := sf(p[0], p[1])
-			fmt.Fprintf(subPath, "%f %f,", x, y)
+// drawPolygon draws a single polygon, which may be defined by multiple paths. Each path is an array of points.
+func drawPolygon(sf ScaleFunc, w io.Writer, paths [][][]float64, attributes string, title string) {
+	pathBuffer := bytes.NewBufferString("")
+	for _, subPath := range paths {
+		subPathBuffer := bytes.NewBufferString(" M")
+		for _, point := range subPath {
+			x, y := sf(point[0], point[1])
+			fmt.Fprintf(subPathBuffer, "%f %f,", x, y)
 		}
-		fmt.Fprintf(path, " %s", trim(subPath))
+		pathBuffer.Write(bytes.TrimRight(subPathBuffer.Bytes(), ","))
 	}
-	pathString := trim(path)
-	endTag := endTag("path", title)
-	fmt.Fprintf(w, `%s<path d="%s Z"%s%s`, newline, pathString, attributes, endTag)
+	w.Write([]byte(`<path d="` + strings.TrimPrefix(pathBuffer.String(), " ") + ` Z"` + attributes + endTag("path", title)))
 }
 
-func drawMultiPolygon(sf ScaleFunc, w io.Writer, ppps [][][][]float64, attributes string, title string) {
-	fmt.Fprintf(w, `%s<g%s>`, newline, attributes)
+// drawMultiPolygon draws multiple polygons, grouped together in a <g> tag
+func drawMultiPolygon(sf ScaleFunc, w io.Writer, polygons [][][][]float64, attributes string, title string) {
+	drawGroupStart(w, attributes, title)
+	for _, polygon := range polygons {
+		drawPolygon(sf, w, polygon, "", "")
+	}
+	drawGroupEnd(w)
+}
+
+// drawGroupStart starts a <g> element, giving it the attributes and a title element
+func drawGroupStart(w io.Writer, attributes string, title string) {
+	w.Write([]byte(`<g` + attributes + `>`))
 	if len(title) > 0 {
-		fmt.Fprintf(w, `%s<title>%s</title>`, newline, title)
+		w.Write([]byte(`<title>` + title + `</title>`))
 	}
-	for _, pps := range ppps {
-		drawPolygon(sf, w, pps, "", "")
-	}
-	fmt.Fprintf(w, `%s</g>`, newline)
 }
 
-func trim(s fmt.Stringer) string {
-	re := regexp.MustCompile(",$")
-	return string(re.ReplaceAll([]byte(strings.TrimSpace(s.String())), []byte("")))
+// drawGroupEnd ends the <g> tag/element
+func drawGroupEnd(w io.Writer) {
+	w.Write([]byte(`</g>`))
 }
 
-// endTag creates an end tag string, "/>" if title is empty, "><title>title</title></tag>" otherwise.
+// endTag creates an end tag string "/>" if title is empty, "><title>title</title></tag>" otherwise.
 func endTag(tag string, title string) string {
 	if len(title) > 0 {
-		return fmt.Sprintf("><title>%s</title></%s>", title, tag)
+		return "><title>" + title + "</title></" +  tag + ">"
 	}
 	return "/>"
 }
 
-// getFeatureAttributesAndTitle converts the proeprties of the feature into a string of attributes, and extracts the title property into a string
+// getFeatureAttributesAndTitle converts the properties of the feature into a string of attributes, and extracts the title property into a string
 func getFeatureAttributesAndTitle(useProp func(string) bool, titleProp string, feature *geojson.Feature) (string, string) {
 	attrs := make(map[string]string)
 	id, isString := feature.ID.(string)
@@ -374,19 +397,21 @@ func makeAttributes(as map[string]string) string {
 
 // makeScaleFunc creates a function that will scale a pair of coordinates so that they fit within the width and height,
 // passing them through the projection first.
-func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, projection ScaleFunc) ScaleFunc {
+func (svg *SVG) makeScaleFunc(width, height float64, projection ScaleFunc) ScaleFunc {
+	padding, points := svg.padding, svg.getPoints()
+
 	w := width - padding.Left - padding.Right
 	h := height - padding.Top - padding.Bottom
 
-	if len(ps) == 0 {
+	if len(points) == 0 {
 		return func(x, y float64) (float64, float64) { return projection(x, y) }
 	}
 
-	if len(ps) == 1 {
+	if len(points) == 1 {
 		return func(x, y float64) (float64, float64) { return w / 2, h / 2 }
 	}
 
-	minX, minY, maxX, maxY := getBoundingRectangle(projection, ps)
+	minX, minY, maxX, maxY := svg.getBoundingRectangle(projection)
 	xRes := (maxX - minX) / w
 	yRes := (maxY - minY) / h
 	res := math.Max(xRes, yRes)
@@ -398,25 +423,34 @@ func makeScaleFunc(width, height float64, padding Padding, ps [][]float64, proje
 
 }
 
-func getBoundingRectangle(projection ScaleFunc, ps [][]float64) (float64, float64, float64, float64) {
-	if len(ps) == 0 || len(ps[0]) == 0 {
-		return 0, 0, 0, 0
+// getBoundingRectangle calculates (and caches) the minX, minY, maxX, maxY coordinates of the svg
+func (svg *SVG) getBoundingRectangle(projection ScaleFunc) (float64, float64, float64, float64) {
+	if svg.bounds == nil {
+		svg.bounds = calcBoundingRectangle(projection, svg.getPoints())
 	}
-	minX, minY := projection(ps[0][0], ps[0][1])
-	maxX, maxY := projection(ps[0][0], ps[0][1])
-	for _, p := range ps[1:] {
+	return svg.bounds.minX, svg.bounds.minY, svg.bounds.maxX, svg.bounds.maxY
+}
+
+// calcBoundingRectangle calculates the minX, minY, maxX, maxY coordinates of the svg, after applying the projection.
+func calcBoundingRectangle(projection ScaleFunc, points [][]float64) *boundingRectangle {
+	if len(points) == 0 || len(points[0]) == 0 {
+		return &boundingRectangle{}
+	}
+	minX, minY := projection(points[0][0], points[0][1])
+	maxX, maxY := projection(points[0][0], points[0][1])
+	for _, p := range points[1:] {
 		x, y := projection(p[0], p[1])
 		minX = math.Min(minX, x)
 		maxX = math.Max(maxX, x)
 		minY = math.Min(minY, y)
 		maxY = math.Max(maxY, y)
 	}
-	return minX, minY, maxX, maxY
+	return &boundingRectangle{minX, minY, maxX, maxY}
 }
 
 // GetHeightForWidth returns an appropriate height given a desired width.
 func (svg *SVG) GetHeightForWidth(width float64, projection ScaleFunc) float64 {
-	minX, minY, maxX, maxY := getBoundingRectangle(projection, svg.points())
+	minX, minY, maxX, maxY := svg.getBoundingRectangle(projection)
 	svgWidth := maxX - minX
 	svgHeight := maxY - minY
 	ratio := svgHeight / svgWidth
@@ -482,7 +516,7 @@ func Centroid(sf ScaleFunc, poly [][][]float64) []float64 {
 		c[1] += (i1 + j1) * (i0*j1 - j0*i1)
 	}
 
-	c[0] /= (area * 6)
-	c[1] /= (area * 6)
+	c[0] /= area * 6
+	c[1] /= area * 6
 	return c
 }
