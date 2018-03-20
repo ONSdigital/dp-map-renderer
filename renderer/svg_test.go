@@ -129,6 +129,23 @@ func TestRenderSVGSucceedsWithNullValues(t *testing.T) {
 	})
 }
 
+func TestSVGIgnoresNilFeatureNames(t *testing.T) {
+
+	Convey("Rendered svg should not include 'nil' in the title when the topology doesn't have the name property", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Geography.NameProperty = "missing"
+
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotContainSubstring, "<nil>")
+		So(result, ShouldContainSubstring, "<title> 7% non-UK born")
+	})
+}
+
 func TestSVGHasWidthAndHeight(t *testing.T) {
 
 	Convey("simpleSVG should be given default width and proportional height", t, func() {
@@ -199,6 +216,7 @@ func TestSVGHasCorrectViewBox(t *testing.T) {
 		So(svg.ViewBox, ShouldEqual, "0 0 400 748")
 	})
 }
+
 func TestSVGContainsClassName(t *testing.T) {
 
 	Convey("simpleSVG should assign class to map regions", t, func() {

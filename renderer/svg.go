@@ -178,7 +178,10 @@ func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.
 	missingValueStyle := "fill: url(#" + request.Filename + "-nodata);"
 	for _, feature := range features {
 		style := missingValueStyle
-		title := feature.Properties[request.Geography.NameProperty]
+		title, ok := feature.Properties[request.Geography.NameProperty]
+		if !ok {
+			title = ""
+		}
 		if vc, exists := dataMap[feature.ID]; exists {
 			style = "fill: " + vc.colour + ";"
 			title = fmt.Sprintf("%v %s%g%s", title, choropleth.ValuePrefix, vc.value, choropleth.ValueSuffix)
