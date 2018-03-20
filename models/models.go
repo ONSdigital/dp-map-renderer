@@ -64,7 +64,6 @@ type Choropleth struct {
 	ValueSuffix              string             `json:"value_suffix,omitempty"`
 	Breaks                   []*ChoroplethBreak `json:"breaks,omitempty"`
 	UpperBound               float64            `json:"upper_bound,omitempty"`
-	MissingValueColor        string             `json:"missing_value_color,omitempty"`
 	HorizontalLegendPosition string             `json:"horizontal_legend_position, omitempty"` // before, after or none (the default)
 	VerticalLegendPosition   string             `json:"vertical_legend_position, omitempty"`   // before, after or none (the default)
 }

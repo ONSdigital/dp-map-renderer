@@ -280,14 +280,14 @@ func TestSVGContainsChoroplethColours(t *testing.T) {
 	})
 }
 
-func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
+func TestSVGHasMissingValuePatternAndCorrectTitle(t *testing.T) {
 
 	Convey("simpleSVG should use style to colour regions, applying style to regions missing data, and modify the title with values", t, func() {
 
 		renderRequest := &models.RenderRequest{
 			Filename:  "testname",
 			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
-			Choropleth: &models.Choropleth{MissingValueColor: "white",
+			Choropleth: &models.Choropleth{
 				Breaks:      []*models.ChoroplethBreak{{LowerBound: 0, Colour: "red"}, {LowerBound: 11, Colour: "green"}},
 				ValuePrefix: "prefix-",
 				ValueSuffix: "-suffix"},
@@ -297,10 +297,11 @@ func TestSVGHasMissingValueColourAndCorrectTitle(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `<defs><pattern id="testname-nodata"`)
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: white;")
+		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: url(#testname-nodata);")
 		So(svg.Paths[1].Style, ShouldContainSubstring, "fill: green;")
 
 		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MissingDataText)
@@ -615,7 +616,7 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 		So(result, ShouldContainSubstring, "fill: "+b.Colour)
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
-	So(result, ShouldContainSubstring, "fill: "+renderRequest.Choropleth.MissingValueColor)
+	So(result, ShouldContainSubstring, "fill: url(#"+renderRequest.Filename + "-nodata)")
 	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
