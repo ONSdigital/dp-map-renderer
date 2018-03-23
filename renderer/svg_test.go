@@ -339,7 +339,7 @@ func TestRenderVerticalKey(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 		assertKeyContents(result, renderRequest)
 
@@ -360,7 +360,7 @@ func TestRenderVerticalKeyWithoutReferenceValue(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 
 	})
@@ -378,10 +378,11 @@ func TestRenderHorizontalKey(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, `width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
 
@@ -401,10 +402,11 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
 
@@ -423,10 +425,11 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
 
@@ -446,10 +449,11 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(228.588667, 0)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(228.588667, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
 
@@ -469,11 +473,90 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(318.955533, 0)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(318.955533, 0)">`)
 		assertKeyContents(result, renderRequest)
+	})
+
+}
+
+func TestRenderHorizontalKeyClassChangesWhenVerticalKeyAlsoPresent(t *testing.T) {
+	Convey("RenderHorizontalKey should include an additional class when vertical key also present", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_horizontal map_key_horizontal_both"`)
+	})
+
+	Convey("RenderHorizontalKey should not include additional class when vertical key absent", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_horizontal"`)
+	})
+
+}
+
+func TestRenderVerticalKeyClassChangesWhenHorizontalKeyAlsoPresent(t *testing.T) {
+	Convey("RenderVerticalKey should include an additional class when horizontal key also present", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_vertical map_key_vertical_both"`)
+	})
+
+	Convey("RenderVerticalKey should not include additional class when horizontal key absent", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.HorizontalLegendPosition = "none"
+
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_vertical"`)
 	})
 
 }

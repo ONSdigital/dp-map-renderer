@@ -241,7 +241,8 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
+	keyClass := getKeyClass(request, "horizontal")
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="%s" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgWidth, content)
@@ -288,7 +289,8 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	keyWidth := getVerticalKeyWidth(request, breaks)
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
+	keyClass := getKeyClass(request, "vertical")
+	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="%s" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgHeight, keyWidth, keyWidth, svgHeight)
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
@@ -318,6 +320,17 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String())
+}
+
+// getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
+func getKeyClass(request *models.RenderRequest, keyType string) string {
+	keyClass := "map_key_" + keyType
+	choropleth := request.Choropleth
+	if (choropleth.VerticalLegendPosition == models.LegendPositionBefore || choropleth.VerticalLegendPosition == models.LegendPositionAfter) &&
+		(choropleth.HorizontalLegendPosition == models.LegendPositionBefore || choropleth.HorizontalLegendPosition == models.LegendPositionAfter) {
+			keyClass = keyClass + " " + keyClass + "_both"
+	}
+	return keyClass
 }
 
 // getVerticalKeyWidth determines the approximate width required for the key
@@ -359,7 +372,7 @@ func writeHorizontalKeyTitle(request *models.RenderRequest, svgWidth float64, co
 
 // writeHorizontalKeyTick draws a vertical line (the tick) at the given position, labelling it with the given value
 func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(%f, 0)">`, xPos)
 	w.WriteString(`<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`)
 	fmt.Fprintf(w, `<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
@@ -367,7 +380,7 @@ func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 
 // writeVerticalKeyTick draws a horizontal line (the tick) at the given position, labelling it with the given value
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(0, %f)">`, yPos)
 	w.WriteString(`<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`)
 	fmt.Fprintf(w, `<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
@@ -376,7 +389,7 @@ func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
 // writeHorizontalKeyRefTick draws a vertical line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
 	xPos := keyInfo.keyWidth * keyInfo.referencePos
-	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(%f, 0)">`, xPos)
 	w.WriteString(`<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`)
 	textAttr := ""
 	if keyInfo.referenceTextLeftLen > xPos+keyInfo.keyX { // adjust the text length so it will fit
@@ -393,7 +406,7 @@ func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgW
 
 // writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
 func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(0, %f)">`, yPos)
 	w.WriteString(`<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`)
 	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, text)
 	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)

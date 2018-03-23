@@ -19,7 +19,7 @@
       {"lower_bound": 20, "color": "rgb(43, 140, 190)"},
       {"lower_bound": 33, "color": "rgb(4, 90, 141)"}
     ],
-    "missing_value_color": "LightGrey",
+    "upper_bound": 54,
     "value_prefix": "",
     "value_suffix": "% non-UK born",
     "horizontal_legend_position": "before",
