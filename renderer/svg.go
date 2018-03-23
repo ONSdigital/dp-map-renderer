@@ -273,7 +273,6 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
-// TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
 func RenderVerticalKey(svgRequest *SVGRequest) string {
 
 	geoJSON := svgRequest.geoJSON
@@ -286,7 +285,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	breaks, referencePos := getSortedBreakInfo(request)
 
 	keyHeight := svgHeight * 0.8
-	keyWidth := getVerticalKeyWidth(request, breaks)
+	keyWidth, offset := getVerticalLegendWidth(request, breaks)
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "vertical")
@@ -294,7 +293,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, keyWidth/2, svgHeight*0.1)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, (keyWidth+offset)/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
@@ -321,6 +320,9 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String())
 }
+func writeVerticalLegendTitle(content *bytes.Buffer, keyWidth float64, svgHeight float64, request *models.RenderRequest) {
+	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+}
 
 // getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
 func getKeyClass(request *models.RenderRequest, keyType string) string {
@@ -333,16 +335,19 @@ func getKeyClass(request *models.RenderRequest, keyType string) string {
 	return keyClass
 }
 
-// getVerticalKeyWidth determines the approximate width required for the key
-func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+// getVerticalLegendWidth determines the approximate width required for the legend
+// it also returns an offset for the position of the key. I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+func getVerticalLegendWidth(request *models.RenderRequest, breaks []*breakInfo) (float64, float64) {
 	missingWidth := htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12
-	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
+	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, request.FontSize)
 	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
-	return math.Max(maxWidth, getVerticalTickTextWidth(request, breaks)) + 10
+	keyWidth, offset := getVerticalTickTextWidth(request, breaks)
+	return math.Max(maxWidth, keyWidth) + 10, offset
 }
 
-// getVerticalTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
-func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+// getVerticalTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 38 pixels for the colour bar
+// it also returns an offset for the position of the key. I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) (float64, float64) {
 	maxTick := 0.0
 	for _, b := range breaks {
 		lbound := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", b.LowerBound), request.FontSize)
@@ -354,9 +359,10 @@ func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo
 			maxTick = ubound
 		}
 	}
-	refTick := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, 0)
-	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
-	return maxTick + math.Max(refTick, refValue) + 36.0
+	refTick := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
+	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), request.FontSize)
+	refWidth := math.Max(refTick, refValue)
+	return maxTick + refWidth + 38.0, maxTick - refWidth
 }
 
 // writeHorizontalKeyTitle write the title above the key for a horizontal legend, ensuring that the text fits within the svg
@@ -523,7 +529,7 @@ type horizontalRefTextInfo struct {
 	referenceTextLongLen  float64
 }
 
-// getHorizontalRefTextInfo calculates the approximate width of the reference value and text, assigning them to short and long values.
+// getHorizontalRefTextInfo calculates the approximate width of the reference value and text, dividing them into short and long values.
 func getHorizontalRefTextInfo(request *models.RenderRequest) *horizontalRefTextInfo {
 	info := horizontalRefTextInfo{}
 	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
