@@ -15,6 +15,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"regexp"
 )
 
 func TestRenderHTMLWithSVG(t *testing.T) {
@@ -232,6 +233,92 @@ func TestRenderHTML_BothLegends(t *testing.T) {
 
 	})
 }
+
+func TestRenderJavascript(t *testing.T) {
+
+	Convey("Should render a javascript block to enable svg pan and zoom", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		js := regexp.MustCompile(`(?s)<script type="text/javascript">.*</script>`).FindString(result)
+		So(js, ShouldNotBeEmpty)
+		So(js, ShouldNotContainSubstring, `[javascript Here]`)
+		So(js, ShouldContainSubstring, `'abcd1234-map-svg'`)
+	})
+}
+
+func TestNotRenderCss(t *testing.T) {
+
+	Convey("Should not render a style block unless min/max width are specified", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 0
+		renderRequest.MaxWidth = 0
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		So(result, ShouldNotContainSubstring, "<style")
+		So(result, ShouldNotContainSubstring, "[css Here]")
+	})
+}
+
+func TestRenderCss(t *testing.T) {
+
+	Convey("Should render a style block to enable the map to be responsive", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `min-width: 300px;`)
+		So(style, ShouldContainSubstring, `max-width: 500px;`)
+		So(style, ShouldNotContainSubstring, `@media (min-width: 523px) {`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
+func TestRenderCssWithBothLegends(t *testing.T) {
+
+	Convey("Should render a style block including switching between horizontal and vertical legends", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">(.*)</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `@media (min-width: 523px) {`)
+		So(style, ShouldContainSubstring, `@media (max-width: 522px) {`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
 
 func TestRenderHTMLWithNoSVG(t *testing.T) {
 

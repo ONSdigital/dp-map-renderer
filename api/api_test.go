@@ -134,9 +134,6 @@ var exampleResponseStart = `
 	div.map_key__vertical, div.map {
 		display: inline-block;
 	}
-	div.map_key__horizontal {
-		clear: both;
-	}
 	.mapRegion {
 		stroke: #323132;
 		stroke-width: 0.5;
@@ -145,35 +142,14 @@ var exampleResponseStart = `
 		stroke: purple;
 		stroke-width: 1;
 	}
-	#abcd1234-legend-horizontal {
-		display: none;
-	}
 	</style>
 	<script type="text/javascript" src="http://ariutta.github.io/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
-	<script type="text/javascript">
-	function toggleLegend() {
-		vert = document.getElementById("abcd1234-legend-vertical")
-		horiz = document.getElementById("abcd1234-legend-horizontal")
-		if (( vert.offsetWidth || vert.offsetHeight || vert.getClientRects().length )) {
-			vert.style.display = "none"
-			horiz.style.display = "block"
-		} else {
-			horiz.style.display = "none"
-			vert.style.display = "block"
-		}
-	}
-	</script>
 </head>
 <body>
-<p>This page has additional styling to set the background colour of the svg, highlight region borders on hover,
-	<br/>and position the legend(s). There's also javascript to toggle between the 2 legends (horizontal and vertical)
-	- the same can be achieved with css alone using min-width and max-width selectors.
+<p>This page imports the svg-pan-zoom library, which is then used by the map-renderer output to enable panning and zooming.
+The output also includes a style block to support responsive resizing.
 </p>
-<button onclick="toggleLegend()">Toggle legend position</button>
 `
 var exampleResponseEnd = `
-<script type="text/javascript">
-svgPanZoom('#abcd1234-map-svg', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true});
-</script>
 </body>
 </html>`

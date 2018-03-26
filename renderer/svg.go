@@ -57,8 +57,8 @@ type SVGRequest struct {
 	ViewBoxWidth, ViewBoxHeight float64
 	breaks                      []*breakInfo // sorted breaks
 	referencePos                float64      // the relative position of the reference tick
-	VerticalLegendWidth         float64
-	verticalKeyOffset           float64 // offset for the position of the key. // I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+	VerticalLegendWidth         float64      // the view box width of the vertical legend
+	verticalKeyOffset           float64      // offset for the position of the key. // I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
 }
 
 // PrepareSVGRequest wraps the request in an SVGRequest, caching expensive calculations up front
@@ -329,19 +329,26 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String())
 }
-func writeVerticalLegendTitle(content *bytes.Buffer, keyWidth float64, svgHeight float64, request *models.RenderRequest) {
-	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-}
 
 // getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
 func getKeyClass(request *models.RenderRequest, keyType string) string {
 	keyClass := "map_key_" + keyType
-	choropleth := request.Choropleth
-	if (choropleth.VerticalLegendPosition == models.LegendPositionBefore || choropleth.VerticalLegendPosition == models.LegendPositionAfter) &&
-		(choropleth.HorizontalLegendPosition == models.LegendPositionBefore || choropleth.HorizontalLegendPosition == models.LegendPositionAfter) {
+	if hasVerticalLegend(request) && hasHorizontalLegend(request) {
 		keyClass = keyClass + " " + keyClass + "_both"
 	}
 	return keyClass
+}
+
+// hasVerticalLegend returns true if the request includes a vertical legend
+func hasVerticalLegend(request *models.RenderRequest) bool {
+	return request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore ||
+		request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter
+}
+
+// hasHorizontalLegend returns true if the request includes a horizontal legend
+func hasHorizontalLegend(request *models.RenderRequest) bool {
+	return request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore ||
+		request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter
 }
 
 // getVerticalLegendWidth determines the approximate width required for the legend
