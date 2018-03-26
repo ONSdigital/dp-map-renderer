@@ -6,6 +6,8 @@ import (
 	"math"
 	"sort"
 
+	"strings"
+
 	g2s "github.com/ONSdigital/dp-map-renderer/geojson2svg"
 	"github.com/ONSdigital/dp-map-renderer/htmlutil"
 	"github.com/ONSdigital/dp-map-renderer/models"
@@ -17,6 +19,22 @@ const RegionClassName = "mapRegion"
 
 // MissingDataText is the text appended to the title of a region that has missing data
 const MissingDataText = "data unavailable"
+
+// MissingDataPattern is the fmt template used to generate the pattern used for regions with missing data
+const MissingDataPattern = `<pattern id="%s-nodata" width="20" height="20" patternUnits="userSpaceOnUse">
+<g fill="#6D6E72">
+<polygon points="00 00 02 00 00 02 00 00"></polygon>
+<polygon points="04 00 06 00 00 06 00 04"></polygon>
+<polygon points="08 00 10 00 00 10 00 08"></polygon>
+<polygon points="12 00 14 00 00 14 00 12"></polygon>
+<polygon points="16 00 18 00 00 18 00 16"></polygon>
+<polygon points="20 00 20 02 02 20 00 20"></polygon>
+<polygon points="20 04 20 06 06 20 04 20"></polygon>
+<polygon points="20 08 20 10 10 20 08 20"></polygon>
+<polygon points="20 12 20 14 14 20 12 20"></polygon>
+<polygon points="20 16 20 18 18 20 16 20"></polygon>
+</g>
+</pattern>`
 
 var pngConverter g2s.PNGConverter
 
@@ -51,7 +69,7 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 		width, height, viewBoxHeight = getWidthAndHeight(request, svg)
 	}
 
-	return &SVGRequest{request: request, geoJSON: geoJSON, svg:svg, width:width, height:height, viewBoxHeight:viewBoxHeight}
+	return &SVGRequest{request: request, geoJSON: geoJSON, svg: svg, width: width, height: height, viewBoxHeight: viewBoxHeight}
 }
 
 // RenderSVG generates an SVG map for the given request
@@ -76,11 +94,15 @@ func RenderSVG(svgRequest *SVGRequest) string {
 		converter = nil
 	}
 
+	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, request.Filename), "\n", "", -1)
+
 	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
+		g2s.WithAttribute("id", mapID(request)+"-svg"),
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
-		g2s.WithPNGFallback(converter))
+		g2s.WithPNGFallback(converter),
+		g2s.WithPattern(missingDataPattern))
 }
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
@@ -153,13 +175,13 @@ func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.
 		return
 	}
 	dataMap := mapDataToColour(request.Data, choropleth, idPrefix)
-	missingValueStyle := ""
-	if len(choropleth.MissingValueColor) > 0 {
-		missingValueStyle = "fill: " + choropleth.MissingValueColor + ";"
-	}
+	missingValueStyle := "fill: url(#" + request.Filename + "-nodata);"
 	for _, feature := range features {
 		style := missingValueStyle
-		title := feature.Properties[request.Geography.NameProperty]
+		title, ok := feature.Properties[request.Geography.NameProperty]
+		if !ok {
+			title = ""
+		}
 		if vc, exists := dataMap[feature.ID]; exists {
 			style = "fill: " + vc.colour + ";"
 			title = fmt.Sprintf("%v %s%g%s", title, choropleth.ValuePrefix, vc.value, choropleth.ValueSuffix)
@@ -238,9 +260,9 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 		writeHorizontalKeyRefTick(ticks, keyInfo, svgWidth)
 	}
 	fmt.Fprint(content, ticks.String())
-	if len(request.Choropleth.MissingValueColor) > 0 {
-		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, 0.0, 55.0)
-	}
+
+	writeKeyMissingPattern(content, request.Filename, 0.0, 55.0)
+
 	content.WriteString(`</g></g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
@@ -286,10 +308,10 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	}
 	fmt.Fprint(content, ticks.String())
 	content.WriteString(`</g>`)
-	if len(request.Choropleth.MissingValueColor) > 0 {
-		xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12)) / 2
-		writeKeyMissingColour(content, request.Choropleth.MissingValueColor, xPos, svgHeight*0.95)
-	}
+
+	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize)+12)) / 2
+	writeKeyMissingPattern(content, request.Filename, xPos, svgHeight*0.95)
+
 	content.WriteString(`</g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
@@ -378,10 +400,10 @@ func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value f
 	w.WriteString(`</g>`)
 }
 
-// writeKeyMissingColour draws a square filled with the missing colour at the given position, labelling it with MissingDataText
-func writeKeyMissingColour(w *bytes.Buffer, colour string, xPos float64, yPos float64) {
-	fmt.Fprintf(w, `<g class="missingColour" transform="translate(%f, %f)">`, xPos, yPos)
-	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: %s;"></rect>`, colour)
+// writeKeyMissingPattern draws a square filled with the missing pattern at the given position, labelling it with MissingDataText
+func writeKeyMissingPattern(w *bytes.Buffer, filename string, xPos float64, yPos float64) {
+	fmt.Fprintf(w, `<g class="missingPattern" transform="translate(%f, %f)">`, xPos, yPos)
+	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#%s-nodata);"></rect>`, filename)
 	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, MissingDataText)
 	w.WriteString(`</g>`)
 }

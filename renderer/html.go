@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	svgReplacementText = "[SVG Here]"
-	verticalKeyReplacementText = "[Vertical key Here]"
+	svgReplacementText           = "[SVG Here]"
+	verticalKeyReplacementText   = "[Vertical key Here]"
 	horizontalKeyReplacementText = "[Horizontal key Here]"
 )
 
@@ -25,7 +25,7 @@ var (
 	newLine      = regexp.MustCompile(`\n`)
 	footnoteLink = regexp.MustCompile(`\[[0-9]+]`)
 
-	widthPattern = regexp.MustCompile(`width="[^"]*"`)
+	widthPattern  = regexp.MustCompile(`width="[^"]*"`)
 	heightPattern = regexp.MustCompile(`height="[^"]+"`)
 
 	// text that will need internationalising at some point:

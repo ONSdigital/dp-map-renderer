@@ -51,7 +51,7 @@ func withAPoint(t *testing.T) {
 func addGeometry(t *testing.T, svg *geojson2svg.SVG, s string) {
 	g, err := geojson.UnmarshalGeometry([]byte(s))
 	if err != nil {
-		t.Errorf("invalid geometry: %s", s)
+		t.Errorf("invalid geometry: %s, error: %s", s, err)
 	}
 	svg.AppendGeometry(g)
 }
@@ -387,6 +387,59 @@ func TestSVGPaddingOption(t *testing.T) {
 				t.Errorf("\nexpected \n%s\ngot \n%s", tc.expected, got)
 			}
 		})
+	}
+}
+
+func TestSVGWithNilGeometry(t *testing.T) {
+	expected := `<svg width="200" height="200"></svg>`
+	svg := geojson2svg.New()
+	svg.AppendGeometry(nil)
+
+	got := svg.Draw(200, 200)
+	if got != expected {
+		t.Errorf("\nexpected \n%s\ngot \n%s", expected, got)
+	}
+}
+
+func TestSVGPattern(t *testing.T) {
+	pattern := `<pattern id="foo"><g><polygon points="00 00 02 00 00 02 00 00"></polygon></g></pattern>"`
+	expected := `<svg width="200" height="200"><defs>` + pattern + `</defs><path d="M0.000000 200.000000,0.000000 0.000000,200.000000 0.000000,200.000000 200.000000"/></svg>`
+	svg := geojson2svg.New()
+	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[0,0], [0,400], [400,400], [400,0]]}`)
+
+	got := svg.Draw(200, 200, geojson2svg.WithPattern(pattern))
+	if got != expected {
+		t.Errorf("\nexpected \n%s\ngot \n%s", expected, got)
+	}
+}
+
+func TestSVGWithFallbackAndPattern(t *testing.T) {
+	pattern := `<pattern id="foo"><g><polygon points="00 00 02 00 00 02 00 00"></polygon></g></pattern>"`
+	svg := geojson2svg.New()
+	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[0,0], [0,400], [400,400], [400,0]]}`)
+	pngConverter := geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
+	got := svg.Draw(200, 200, geojson2svg.WithPattern(pattern), geojson2svg.WithPNGFallback(pngConverter))
+
+	if !strings.Contains(got, "<foreignObject>") {
+		t.Errorf("Expected `%s` to contain `%s`", got, "<foreignObject>")
+	}
+
+	if !strings.Contains(got, `<defs><pattern id="foo">`) {
+		t.Errorf("Expected `%s` to contain `%s`", got, `<defs><pattern id="foo">`)
+	}
+}
+
+func TestSVGMultiplePatterns(t *testing.T) {
+	pattern1 := `<pattern id="foo"><g><polygon points="00 00 02 00 00 02 00 00"></polygon></g></pattern>"`
+	pattern2 := `<pattern id="bar"><g><polygon points="00 00 02 00 00 02 00 00"></polygon></g></pattern>"`
+	expected := `<svg width="200" height="200"><defs>` + pattern1 + pattern2 + `</defs><path d="M0.000000 200.000000,0.000000 0.000000,200.000000 0.000000,200.000000 200.000000"/></svg>`
+	svg := geojson2svg.New()
+	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[0,0], [0,400], [400,400], [400,0]]}`)
+	geojson2svg.WithPattern(pattern1)
+
+	got := svg.Draw(200, 200, geojson2svg.WithPattern(pattern1), geojson2svg.WithPattern(pattern2))
+	if got != expected {
+		t.Errorf("\nexpected \n%s\ngot \n%s", expected, got)
 	}
 }
 

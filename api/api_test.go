@@ -137,6 +137,10 @@ var exampleResponseStart = `
 	div.map_key__horizontal {
 		clear: both;
 	}
+	.mapRegion {
+		stroke: #323132;
+		stroke-width: 0.5;
+	}
 	.mapRegion:hover {
 		stroke: purple;
 		stroke-width: 1;
@@ -144,10 +148,8 @@ var exampleResponseStart = `
 	#abcd1234-legend-horizontal {
 		display: none;
 	}
-	.map svg {
-		background-color: LightBlue;
-	}
 	</style>
+	<script type="text/javascript" src="http://ariutta.github.io/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
 	<script type="text/javascript">
 	function toggleLegend() {
 		vert = document.getElementById("abcd1234-legend-vertical")
@@ -170,5 +172,8 @@ var exampleResponseStart = `
 <button onclick="toggleLegend()">Toggle legend position</button>
 `
 var exampleResponseEnd = `
+<script type="text/javascript">
+svgPanZoom('#map-abcd1234-svg', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true});
+</script>
 </body>
 </html>`

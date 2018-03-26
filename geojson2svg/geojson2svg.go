@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ONSdigital/go-ns/log"
 	"github.com/paulmach/go.geojson"
 )
 
@@ -42,6 +43,7 @@ type SVG struct {
 	attributes   map[string]string
 	elements     []*SVGElement
 	titleProp    string
+	patterns     []string
 	pngConverter PNGConverter
 	bounds       *boundingRectangle
 	points       [][]float64
@@ -119,10 +121,12 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 
 	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
 
+	patterns := svg.getPatterns()
+
 	if svg.pngConverter == nil {
-		return fmt.Sprintf(`<svg %s>%s</svg>`, attributes, content)
+		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, patterns, content)
 	}
-	return svg.pngConverter.IncludeFallbackImage(attributes, content.String())
+	return svg.pngConverter.IncludeFallbackImage(attributes, patterns+content.String())
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -181,6 +185,13 @@ func WithTitles(titleProperty string) Option {
 	}
 }
 
+// WithPattern configures the SVG to include a <def> element with the given pattern (which must be a correctly formatted <pattern> element).
+func WithPattern(pattern string) Option {
+	return func(svg *SVG) {
+		svg.patterns = append(svg.patterns, pattern)
+	}
+}
+
 // WithPNGFallback configures the SVG to include a png image as a foreignObject fallback for browsers that don't support svg
 func WithPNGFallback(converter PNGConverter) Option {
 	return func(svg *SVG) {
@@ -227,6 +238,8 @@ func (svg *SVG) getPoints() [][]float64 {
 // process draws the given geometry to the svg canvas (the writer)
 func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, title string) {
 	switch {
+	case g == nil:
+		log.Debug("process invoked with nil Geometry", nil)
 	case g.IsPoint():
 		drawPoint(sf, w, g.Point, attributes, title)
 	case g.IsMultiPoint():
@@ -251,6 +264,8 @@ func process(sf ScaleFunc, w io.Writer, g *geojson.Geometry, attributes string, 
 // collect appends all points in the given geometry to the given slice, returning the new slice
 func collect(g *geojson.Geometry) (points [][]float64) {
 	switch {
+	case g == nil:
+		log.Debug("collect invoked with nil Geometry", nil)
 	case g.IsPoint():
 		points = append(points, g.Point)
 	case g.IsMultiPoint():
@@ -306,7 +321,7 @@ func drawLineString(sf ScaleFunc, w io.Writer, points [][]float64, attributes st
 		fmt.Fprintf(path, "%f %f,", x, y)
 	}
 	endTag := endTag("path", title)
-	w.Write([]byte(`<path d="` + strings.TrimSuffix(path.String(), ",") + `"` +  attributes + endTag))
+	w.Write([]byte(`<path d="` + strings.TrimSuffix(path.String(), ",") + `"` + attributes + endTag))
 }
 
 // drawMultiLineString draws multiple lines (paths), grouped together in a <g> tag
@@ -357,7 +372,7 @@ func drawGroupEnd(w io.Writer) {
 // endTag creates an end tag string "/>" if title is empty, "><title>title</title></tag>" otherwise.
 func endTag(tag string, title string) string {
 	if len(title) > 0 {
-		return "><title>" + title + "</title></" +  tag + ">"
+		return "><title>" + title + "</title></" + tag + ">"
 	}
 	return "/>"
 }
@@ -486,6 +501,19 @@ func areaOfPolygon(sf ScaleFunc, path [][]float64) float64 {
 	}
 
 	return 0.5 * s
+}
+
+// getPatterns returns a string with all patterns concatenated together
+func (svg *SVG) getPatterns() string {
+	buffer := bytes.NewBufferString("")
+	if len(svg.patterns) > 0 {
+		buffer.WriteString("<defs>")
+		for _, pattern := range svg.patterns {
+			buffer.WriteString(pattern)
+		}
+		buffer.WriteString("</defs>")
+	}
+	return buffer.String()
 }
 
 // Centroid calculates the centroid of the exterior ring of a polygon using
