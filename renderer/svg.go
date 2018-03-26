@@ -51,10 +51,10 @@ type valueAndColour struct {
 
 // SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as converting topojson to geojson)
 type SVGRequest struct {
-	request                      *models.RenderRequest
-	geoJSON                      *geojson.FeatureCollection
-	svg                          *g2s.SVG
-	width, height, viewBoxHeight float64
+	request                     *models.RenderRequest
+	geoJSON                     *geojson.FeatureCollection
+	svg                         *g2s.SVG
+	viewBoxWidth, viewBoxHeight float64
 }
 
 // PrepareSVGRequest wraps the request in an SVGRequest, caching expensive calculations up front
@@ -64,12 +64,12 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 	svg := g2s.New()
 	svg.AppendFeatureCollection(geoJSON)
 
-	width, height, viewBoxHeight := 0.0, 0.0, 0.0
+	width, height := 0.0, 0.0
 	if geoJSON != nil {
-		width, height, viewBoxHeight = getWidthAndHeight(request, svg)
+		width, height = getViewBoxDimensions(request, svg)
 	}
 
-	return &SVGRequest{request: request, geoJSON: geoJSON, svg: svg, width: width, height: height, viewBoxHeight: viewBoxHeight}
+	return &SVGRequest{request: request, geoJSON: geoJSON, svg: svg, viewBoxWidth: width, viewBoxHeight: height}
 }
 
 // RenderSVG generates an SVG map for the given request
@@ -80,8 +80,7 @@ func RenderSVG(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	width := svgRequest.width
-	height := svgRequest.height
+	vbWidth := svgRequest.viewBoxWidth
 	vbHeight := svgRequest.viewBoxHeight
 
 	idPrefix := request.Filename + "-"
@@ -96,12 +95,12 @@ func RenderSVG(svgRequest *SVGRequest) string {
 
 	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, request.Filename), "\n", "", -1)
 
-	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
+	return svgRequest.svg.DrawWithProjection(vbWidth, vbHeight, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("id", mapID(request)+"-svg"),
 		g2s.WithAttribute("style", "width=100%;"), // an explicit width is necessary for the pan-and-zoom js to work
-		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
+		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", vbWidth, vbHeight)),
 		g2s.WithPNGFallback(converter),
 		g2s.WithPattern(missingDataPattern))
 }
@@ -119,21 +118,12 @@ func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
 	return request.Geography.Topojson.ToGeoJSON()
 }
 
-// getWidthAndHeight extracts width and height from the request,
-// defaulting the width if missing and determining the height proportionally to the width if missing
-// note that this means that the request should only specify height if it has specified width, otherwise the dimensions will be wrong.
-// The third response argument is the height that should be used for the viewBox - this may be different to the height specified in the request.
-func getWidthAndHeight(request *models.RenderRequest, svg *g2s.SVG) (float64, float64, float64) {
-	width := request.Width
-	if width <= 0 {
-		width = 400.0
-	}
-	viewBoxHeight := svg.GetHeightForWidth(width, g2s.MercatorProjection)
-	height := request.Height
-	if height <= 0 {
-		height = viewBoxHeight
-	}
-	return width, height, viewBoxHeight
+// getViewBoxDimensions assigns the viewbox a fixed width (400) and calculates the height relative to this,
+// returning (width, height)
+func getViewBoxDimensions(request *models.RenderRequest, svg *g2s.SVG) (float64, float64) {
+	width := 400.0
+	height := svg.GetHeightForWidth(width, g2s.MercatorProjection)
+	return width, height
 }
 
 // setFeatureIDs looks in each Feature for a property with the given idProperty, using it as the feature id.
@@ -236,14 +226,14 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	svgWidth := svgRequest.width
 
+	svgWidth := svgRequest.viewBoxWidth
 	keyInfo := getHorizontalKeyInfo(svgWidth, request)
 
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "horizontal")
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgWidth, svgWidth)
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgWidth, content)
@@ -281,7 +271,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	svgHeight := svgRequest.height
+	svgHeight := svgRequest.viewBoxHeight
 
 	breaks, referencePos := getSortedBreakInfo(request)
 
@@ -290,7 +280,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "vertical")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgHeight, keyWidth, keyWidth, svgHeight)
+	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, keyWidth, svgHeight)
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)

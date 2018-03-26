@@ -37,8 +37,8 @@ type RenderRequest struct {
 	Geography          *Geography  `json:"geography,omitempty"`
 	Data               []*DataRow  `json:"data,omitempty"`
 	Choropleth         *Choropleth `json:"choropleth,omitempty"`
-	Width              float64     `json:"width,omitempty"`
-	Height             float64     `json:"height,omitempty"`
+	MinWidth           float64     `json:"min_width,omitempty"`
+	MaxWidth           float64     `json:"max_width,omitempty"`
 	IncludeFallbackPng bool        `json:"include_fallback_png"`
 	FontSize           int         `json:"font_size"`
 }
