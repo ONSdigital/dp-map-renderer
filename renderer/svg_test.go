@@ -33,7 +33,7 @@ func TestRenderSVG(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg width="400" height="748" id="map-abcd1234-svg" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg width="400" height="748" id="abcd1234-map-svg" style="width=100%;" viewBox="0 0 400 748">`)
 	})
 }
 
@@ -339,7 +339,7 @@ func TestRenderVerticalKey(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 		assertKeyContents(result, renderRequest)
 
@@ -360,7 +360,7 @@ func TestRenderVerticalKeyWithoutReferenceValue(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 
 	})
@@ -378,7 +378,7 @@ func TestRenderHorizontalKey(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, `width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
@@ -402,7 +402,7 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
@@ -425,7 +425,7 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
@@ -449,7 +449,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
@@ -473,7 +473,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` width="400" height="90" viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)

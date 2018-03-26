@@ -29,7 +29,7 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -63,7 +63,7 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 
 		fmt.Println(html)
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldBeNil)
@@ -102,7 +102,7 @@ func TestRenderHTMLWithPNG_ConverterNotAvailable(t *testing.T) {
 		container, _ := invokeRenderHTMLWithPNG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)

@@ -100,6 +100,7 @@ func RenderSVG(svgRequest *SVGRequest) string {
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("id", mapID(request)+"-svg"),
+		g2s.WithAttribute("style", "width=100%;"), // an explicit width is necessary for the pan-and-zoom js to work
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
 		g2s.WithPNGFallback(converter),
 		g2s.WithPattern(missingDataPattern))
@@ -242,7 +243,7 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "horizontal")
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="%s" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgWidth, svgWidth)
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgWidth, svgWidth)
 
 	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgWidth, content)
@@ -289,7 +290,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "vertical")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="%s" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgHeight, keyWidth, keyWidth, svgHeight)
+	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgHeight, keyWidth, keyWidth, svgHeight)
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)

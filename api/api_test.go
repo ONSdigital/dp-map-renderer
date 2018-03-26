@@ -173,7 +173,7 @@ var exampleResponseStart = `
 `
 var exampleResponseEnd = `
 <script type="text/javascript">
-svgPanZoom('#map-abcd1234-svg', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true});
+svgPanZoom('#abcd1234-map-svg', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true});
 </script>
 </body>
 </html>`

@@ -90,7 +90,7 @@ func createFigure(request *models.RenderRequest) *html.Node {
 
 // mapID returns the id for the map, as used in links etc
 func mapID(request *models.RenderRequest) string {
-	return "map-" + request.Filename
+	return request.Filename + "-map"
 }
 
 // addSVGDivs adds divs with marker text for each of the horizontal & vertical legends, and the map
@@ -100,19 +100,33 @@ func addSVGDivs(request *models.RenderRequest, parent *html.Node) {
 	}
 
 	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), horizontalKeyReplacementText))
+		parent.AppendChild(h.CreateNode("div", atom.Div,
+			h.Attr("id", request.Filename+"-legend-horizontal"),
+			h.Attr("class", "map_key map_key__horizontal"),
+			horizontalKeyReplacementText))
 	}
 	if request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), verticalKeyReplacementText))
+		parent.AppendChild(h.CreateNode("div", atom.Div,
+			h.Attr("id", request.Filename+"-legend-vertical"),
+			h.Attr("class", "map_key map_key__vertical"),
+			verticalKeyReplacementText))
 	}
 
-	parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map"), svgReplacementText))
+	parent.AppendChild(h.CreateNode("div", atom.Div,
+		h.Attr("class", "map"),
+		svgReplacementText))
 
 	if request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__vertical"), verticalKeyReplacementText))
+		parent.AppendChild(h.CreateNode("div", atom.Div,
+			h.Attr("id", request.Filename+"-legend-vertical"),
+			h.Attr("class", "map_key map_key__vertical"),
+			verticalKeyReplacementText))
 	}
 	if request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter {
-		parent.AppendChild(h.CreateNode("div", atom.Div, h.Attr("class", "map_key map_key__horizontal"), horizontalKeyReplacementText))
+		parent.AppendChild(h.CreateNode("div", atom.Div,
+			h.Attr("id", request.Filename+"-legend-horizontal"),
+			h.Attr("class", "map_key map_key__horizontal"),
+			horizontalKeyReplacementText))
 	}
 }
 
