@@ -30,7 +30,7 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -64,7 +64,7 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 
 		fmt.Println(html)
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldBeNil)
@@ -103,7 +103,7 @@ func TestRenderHTMLWithPNG_ConverterNotAvailable(t *testing.T) {
 		container, _ := invokeRenderHTMLWithPNG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -248,7 +248,7 @@ func TestRenderJavascript(t *testing.T) {
 		js := regexp.MustCompile(`(?s)<script type="text/javascript">.*</script>`).FindString(result)
 		So(js, ShouldNotBeEmpty)
 		So(js, ShouldNotContainSubstring, `[javascript Here]`)
-		So(js, ShouldContainSubstring, `'abcd1234-map-svg'`)
+		So(js, ShouldContainSubstring, `'map-abcd1234-map-svg'`)
 		So(js, ShouldContainSubstring, `svg.style.height = Math.round(svg.clientWidth * 1.87) + "px"`)
 	})
 }

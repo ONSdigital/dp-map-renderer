@@ -106,17 +106,17 @@ func RenderSVG(svgRequest *SVGRequest) string {
 	vbWidth := svgRequest.ViewBoxWidth
 	vbHeight := svgRequest.ViewBoxHeight
 
-	idPrefix := request.Filename + "-"
-	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, idPrefix)
+	id := idPrefix(request)
+	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, id+ "-")
 	setClassProperty(geoJSON.Features, RegionClassName)
-	setChoroplethColoursAndTitles(geoJSON.Features, request, idPrefix)
+	setChoroplethColoursAndTitles(geoJSON.Features, request)
 
 	converter := pngConverter
 	if !request.IncludeFallbackPng {
 		converter = nil
 	}
 
-	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, request.Filename), "\n", "", -1)
+	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, id), "\n", "", -1)
 
 	return svgRequest.svg.DrawWithProjection(vbWidth, vbHeight, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
@@ -157,15 +157,15 @@ func getViewBoxDimensions(svg *g2s.SVG, request *models.RenderRequest) (float64,
 }
 
 // setFeatureIDs looks in each Feature for a property with the given idProperty, using it as the feature id.
-func setFeatureIDs(features []*geojson.Feature, idProperty string, idPrefix string) {
+func setFeatureIDs(features []*geojson.Feature, idProperty string, prefix string) {
 	for _, feature := range features {
 		id, isString := feature.Properties[idProperty].(string)
 		if isString && len(id) > 0 {
-			feature.ID = idPrefix + id
+			feature.ID = prefix + id
 		} else {
 			id, isString := feature.ID.(string)
 			if isString && len(id) > 0 {
-				feature.ID = idPrefix + id
+				feature.ID = prefix + id
 			}
 		}
 	}
@@ -190,13 +190,14 @@ func appendProperty(feature *geojson.Feature, propertyName string, value string)
 
 // setChoroplethColoursAndTitles creates a mapping from the id of a data row to its value and colour,
 // then iterates through the features assigning a title and style for the colour.
-func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.RenderRequest, idPrefix string) {
+func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.RenderRequest) {
 	choropleth := request.Choropleth
 	if choropleth == nil || request.Data == nil {
 		return
 	}
-	dataMap := mapDataToColour(request.Data, choropleth, idPrefix)
-	missingValueStyle := "fill: url(#" + request.Filename + "-nodata);"
+	id := idPrefix(request)
+	dataMap := mapDataToColour(request.Data, choropleth, id+ "-")
+	missingValueStyle := "fill: url(#" + id + "-nodata);"
 	for _, feature := range features {
 		style := missingValueStyle
 		title, ok := feature.Properties[request.Geography.NameProperty]
@@ -215,12 +216,12 @@ func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.
 }
 
 // mapDataToColour creates a map of DataRow.ID=valueAndColour
-func mapDataToColour(data []*models.DataRow, choropleth *models.Choropleth, idPrefix string) map[interface{}]valueAndColour {
+func mapDataToColour(data []*models.DataRow, choropleth *models.Choropleth, prefix string) map[interface{}]valueAndColour {
 	breaks := sortBreaks(choropleth.Breaks, false)
 
 	dataMap := make(map[interface{}]valueAndColour)
 	for _, row := range data {
-		dataMap[idPrefix+row.ID] = valueAndColour{value: row.Value, colour: getColour(row.Value, breaks)}
+		dataMap[prefix+row.ID] = valueAndColour{value: row.Value, colour: getColour(row.Value, breaks)}
 	}
 	return dataMap
 }
@@ -263,14 +264,15 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "horizontal")
 	vbHeight := 90.0
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgRequest.ViewBoxWidth, vbHeight)
+	id := idPrefix(request)
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, svgRequest.ViewBoxWidth, vbHeight)
 	if !svgRequest.responsiveSize {
-		svgAttributes += fmt.Sprintf(`width="%.f" height="%.f"`, svgRequest.ViewBoxWidth, vbHeight)
+		svgAttributes += fmt.Sprintf(` width="%.f" height="%.f"`, svgRequest.ViewBoxWidth, vbHeight)
 	}
 
-	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, id)
 	writeHorizontalKeyTitle(request, svgRequest.ViewBoxWidth, content)
-	fmt.Fprintf(content, `<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, request.Filename, keyInfo.keyX)
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, id, keyInfo.keyX)
 	left := 0.0
 	breaks := svgRequest.breaks
 	for i := 0; i < len(breaks); i++ {
@@ -286,7 +288,7 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	}
 	fmt.Fprint(content, ticks.String())
 
-	writeKeyMissingPattern(content, request.Filename, 0.0, 55.0)
+	writeKeyMissingPattern(content, id, 0.0, 55.0)
 
 	content.WriteString(`</g></g>`)
 
@@ -314,14 +316,15 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "vertical")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, keyWidth, svgHeight)
+	id := idPrefix(request)
+	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, keyWidth, svgHeight)
 	if !svgRequest.responsiveSize {
-		attributes += fmt.Sprintf(`width="%.f" height="%.f"`, keyWidth, svgHeight)
+		attributes += fmt.Sprintf(` width="%.f" height="%.f"`, keyWidth, svgHeight)
 	}
 
-	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, id)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, (keyWidth+offset)/2, svgHeight*0.1)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, id, (keyWidth+offset)/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
@@ -339,7 +342,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	content.WriteString(`</g>`)
 
 	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize)+12)) / 2
-	writeKeyMissingPattern(content, request.Filename, xPos, svgHeight*0.95)
+	writeKeyMissingPattern(content, id, xPos, svgHeight*0.95)
 
 	content.WriteString(`</g>`)
 

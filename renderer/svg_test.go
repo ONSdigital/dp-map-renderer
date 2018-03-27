@@ -36,7 +36,7 @@ func TestRenderSVGWithFixedSize(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg width="400" height="748" id="abcd1234-map-svg" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg width="400" height="748" id="map-abcd1234-map-svg" viewBox="0 0 400 748">`)
 	})
 }
 
@@ -55,7 +55,7 @@ func TestRenderSVGWithResponsiveSize(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-map-svg" style="width:100%;" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-map-svg" style="width:100%;" viewBox="0 0 400 748">`)
 	})
 }
 
@@ -220,8 +220,8 @@ func TestSVGContainsIDs(t *testing.T) {
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].ID, ShouldEqual, "testname-f0")
-		So(svg.Paths[1].ID, ShouldEqual, "testname-f1")
+		So(svg.Paths[0].ID, ShouldEqual, "map-testname-f0")
+		So(svg.Paths[1].ID, ShouldEqual, "map-testname-f1")
 	})
 }
 
@@ -284,11 +284,11 @@ func TestSVGHasMissingValuePatternAndCorrectTitle(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldContainSubstring, `<defs><pattern id="testname-nodata"`)
+		So(result, ShouldContainSubstring, `<defs><pattern id="map-testname-nodata"`)
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: url(#testname-nodata);")
+		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: url(#map-testname-nodata);")
 		So(svg.Paths[1].Style, ShouldContainSubstring, "fill: green;")
 
 		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MissingDataText)
@@ -308,7 +308,7 @@ func TestRenderVerticalKey(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical-svg" class="map_key_vertical`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 		assertKeyContents(result, renderRequest)
 
@@ -329,7 +329,7 @@ func TestRenderVerticalKeyWithoutReferenceValue(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical-svg" class="map_key_vertical`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 
 	})
@@ -347,10 +347,10 @@ func TestRenderHorizontalKey(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
@@ -371,10 +371,10 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
@@ -394,10 +394,10 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
@@ -418,10 +418,10 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(228.588667, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
@@ -442,10 +442,10 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
 		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(318.955533, 0)">`)
 		assertKeyContents(result, renderRequest)
 	})
@@ -686,7 +686,7 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 		So(result, ShouldContainSubstring, "fill: "+b.Colour)
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
-	So(result, ShouldContainSubstring, "fill: url(#"+renderRequest.Filename+"-nodata)")
+	So(result, ShouldContainSubstring, "fill: url(#map-"+renderRequest.Filename+"-nodata)")
 	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
