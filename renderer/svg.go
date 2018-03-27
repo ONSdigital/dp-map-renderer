@@ -259,12 +259,18 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	request := svgRequest.request
 
 	keyInfo := getHorizontalKeyInfo(svgRequest.ViewBoxWidth, svgRequest)
+	id := idPrefix(request)
+	missingId := id + "-horizontal"
 
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
+
+	fmt.Fprintf(content, "<defs>")
+	fmt.Fprintf(content, MissingDataPattern, missingId)
+	fmt.Fprintf(content, "</defs>")
+
 	keyClass := getKeyClass(request, "horizontal")
 	vbHeight := 90.0
-	id := idPrefix(request)
 	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, svgRequest.ViewBoxWidth, vbHeight)
 	if !svgRequest.responsiveSize {
 		svgAttributes += fmt.Sprintf(` width="%.f" height="%.f"`, svgRequest.ViewBoxWidth, vbHeight)
@@ -288,7 +294,7 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	}
 	fmt.Fprint(content, ticks.String())
 
-	writeKeyMissingPattern(content, id, 0.0, 55.0)
+	writeKeyMissingPattern(content, missingId, 0.0, 55.0, request.FontSize)
 
 	content.WriteString(`</g></g>`)
 
@@ -313,17 +319,25 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	keyHeight := svgHeight * 0.8
 	keyWidth, offset := svgRequest.VerticalLegendWidth, svgRequest.verticalKeyOffset
 
+	id := idPrefix(request)
+
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
+
+	missingId := id + "-vertical"
+
+	fmt.Fprintf(content, "<defs>")
+	fmt.Fprintf(content, MissingDataPattern, missingId)
+	fmt.Fprintf(content, "</defs>")
+
 	keyClass := getKeyClass(request, "vertical")
-	id := idPrefix(request)
 	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, keyWidth, svgHeight)
 	if !svgRequest.responsiveSize {
 		attributes += fmt.Sprintf(` width="%.f" height="%.f"`, keyWidth, svgHeight)
 	}
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, id)
-	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
+	writeVerticalLegendTitle(content, keyWidth, svgHeight, request)
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, id, (keyWidth+offset)/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
@@ -336,13 +350,13 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	}
 	writeVerticalKeyTick(ticks, keyHeight-position, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*svgRequest.referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
+		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*svgRequest.referencePos), request)
 	}
 	fmt.Fprint(content, ticks.String())
 	content.WriteString(`</g>`)
 
 	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize)+12)) / 2
-	writeKeyMissingPattern(content, id, xPos, svgHeight*0.95)
+	writeKeyMissingPattern(content, missingId, xPos, svgHeight*0.95, request.FontSize)
 
 	content.WriteString(`</g>`)
 
@@ -350,6 +364,12 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
 	return pngConverter.IncludeFallbackImage(attributes, content.String(), keyWidth, svgHeight)
+}
+
+func writeVerticalLegendTitle(content *bytes.Buffer, keyWidth float64, svgHeight float64, request *models.RenderRequest) (int, error) {
+	text := request.Choropleth.ValuePrefix + " " + request.Choropleth.ValueSuffix
+	textLen := htmlutil.GetApproximateTextWidth(text, request.FontSize)
+	return fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, keyWidth/2, svgHeight*0.05, textLen, text)
 }
 
 // getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
@@ -452,19 +472,21 @@ func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgR
 }
 
 // writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
-func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
+func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, request *models.RenderRequest) {
+	text, value := request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue
+	textLen := htmlutil.GetApproximateTextWidth(text, request.FontSize)
 	fmt.Fprintf(w, `<g class="map__tick" transform="translate(0, %f)">`, yPos)
 	w.WriteString(`<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`)
-	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, text)
+	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, textLen, text)
 	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
 }
 
 // writeKeyMissingPattern draws a square filled with the missing pattern at the given position, labelling it with MissingDataText
-func writeKeyMissingPattern(w *bytes.Buffer, filename string, xPos float64, yPos float64) {
+func writeKeyMissingPattern(w *bytes.Buffer, id string, xPos float64, yPos float64, fontSize int) {
 	fmt.Fprintf(w, `<g class="missingPattern" transform="translate(%f, %f)">`, xPos, yPos)
-	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#%s-nodata);"></rect>`, filename)
-	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, MissingDataText)
+	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#%s-nodata);"></rect>`, id)
+	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, htmlutil.GetApproximateTextWidth(MissingDataText, fontSize), MissingDataText)
 	w.WriteString(`</g>`)
 }
 

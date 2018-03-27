@@ -29,6 +29,7 @@ const (
 
 // javascriptTemplate is used to enable pan-and-zoom functionality if the containing page supports it
 const javascriptTemplate = `
+<script type="text/javascript">
 	document.addEventListener("DOMContentLoaded", function() {
 		if (svgPanZoom) {
 			var setSvgHeight = function() {
@@ -46,6 +47,7 @@ const javascriptTemplate = `
 	        });
 		}
       });
+</script>
 `
 
 var (
@@ -229,10 +231,7 @@ func addCssPlaceholder(request *models.RenderRequest, parent *html.Node) {
 
 // addJavascript adds a script node containing a placeholder for the script to activate pan and zoom functionality if it is offered by the containing page.
 func addJavascriptPlaceholder(request *models.RenderRequest, parent *html.Node) {
-	parent.AppendChild(
-		h.CreateNode("script", atom.Script,
-			h.Attr("type", "text/javascript"),
-			javascriptReplacementText))
+	parent.AppendChild(h.Text(javascriptReplacementText))
 }
 
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
@@ -307,10 +306,11 @@ func renderCss(svgRequest *SVGRequest) string {
 	return css.String()
 }
 
-// renderPNGs replaces the SVG marker text with png images
+// renderPNGs replaces the SVG marker text with png images. It will not return a responsive design, and will ensure that only one of the legends is included.
 func renderPNGs(request *models.RenderRequest, original string) string {
 	svgRequest := PrepareSVGRequest(request)
 	svgRequest.responsiveSize = false
+
 	svg := RenderSVG(svgRequest)
 	result := strings.Replace(original, svgReplacementText, renderPNG(svg), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
@@ -318,11 +318,16 @@ func renderPNGs(request *models.RenderRequest, original string) string {
 		result = strings.Replace(result, verticalKeyReplacementText, renderPNG(key), 1)
 	}
 	if strings.Contains(result, horizontalKeyReplacementText) {
-		key := RenderHorizontalKey(svgRequest)
-		result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
+		// only render horizontal if we won't have vertical
+		if hasVerticalLegend(request) {
+			result = strings.Replace(result, horizontalKeyReplacementText, "", 1)
+		} else {
+			key := RenderHorizontalKey(svgRequest)
+			result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
+		}
 	}
 	result = strings.Replace(result, javascriptReplacementText, "", 1)
-	result = strings.Replace(result, cssReplacementText, renderCss(svgRequest), 1)
+	result = strings.Replace(result, cssReplacementText, "", 1)
 	return result
 }
 

@@ -310,7 +310,7 @@ func TestRenderVerticalKey(t *testing.T) {
 		So(result, ShouldNotBeNil)
 		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "vertical")
 
 	})
 }
@@ -352,7 +352,7 @@ func TestRenderHorizontalKey(t *testing.T) {
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -376,7 +376,7 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
 		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -399,7 +399,7 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -423,7 +423,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(228.588667, 0)">`)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -447,7 +447,7 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
 		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
 		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(318.955533, 0)">`)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -679,14 +679,14 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 
 }
 
-func assertKeyContents(result string, renderRequest *models.RenderRequest) {
+func assertKeyContents(result string, renderRequest *models.RenderRequest, align string) {
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValuePrefix)
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValueSuffix)
 	for _, b := range renderRequest.Choropleth.Breaks {
 		So(result, ShouldContainSubstring, "fill: "+b.Colour)
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
-	So(result, ShouldContainSubstring, "fill: url(#map-"+renderRequest.Filename+"-nodata)")
+	So(result, ShouldContainSubstring, "fill: url(#map-"+renderRequest.Filename+"-"+align+"-nodata)")
 	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)

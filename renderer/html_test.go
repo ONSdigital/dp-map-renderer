@@ -48,7 +48,63 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 	})
 }
 
-func TestRenderHTMLWithPNG(t *testing.T) {
+func TestRenderHTMLWithPNGWithVerticalLegend(t *testing.T) {
+
+	Convey("Successfully render a png image of the map with no horizontal legend", t, func() {
+
+		renderer.UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+
+		container, html := invokeRenderHTMLWithPNG(renderRequest)
+
+		fmt.Println(html)
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
+
+		So(FindNode(container, atom.Svg), ShouldBeNil)
+		So(FindNode(container, atom.Style), ShouldBeNil)
+		So(FindNode(container, atom.Script), ShouldBeNil)
+
+		So(len(FindAllNodes(container, atom.Img)), ShouldEqual, 2)
+
+		hDiv := findNodeWithClass(container, atom.Div, "map_key__horizontal")
+		So(FindNode(hDiv, atom.Img), ShouldBeNil)
+
+		mDiv := findNodeWithClass(container, atom.Div, "map")
+		img := FindNode(mDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		vDiv := findNodeWithClass(container, atom.Div, "map_key__vertical")
+		img = FindNode(vDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		// the footer - source
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		// footnotes
+		notes := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__notes"})
+		So(notes, ShouldNotBeNil)
+		So(notes.FirstChild.Data, ShouldResemble, "Notes")
+		footnotes := FindNodes(footer, atom.Li)
+		So(len(footnotes), ShouldEqual, len(renderRequest.Footnotes))
+
+	})
+}
+
+func TestRenderHTMLWithPNGWithHorizontalLegend(t *testing.T) {
 
 	Convey("Successfully render a png image of the map", t, func() {
 
@@ -59,6 +115,8 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
 
 		container, html := invokeRenderHTMLWithPNG(renderRequest)
 
@@ -66,10 +124,20 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
 		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
-		svg := FindNode(container, atom.Svg)
-		So(svg, ShouldBeNil)
+		So(len(FindAllNodes(container, atom.Img)), ShouldEqual, 2)
 
-		img := FindNode(container, atom.Img)
+		So(FindNode(container, atom.Svg), ShouldBeNil)
+		So(FindNode(container, atom.Style), ShouldBeNil)
+		So(FindNode(container, atom.Script), ShouldBeNil)
+
+		hDiv := findNodeWithClass(container, atom.Div, "map_key__horizontal")
+		img := FindNode(hDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		mDiv := findNodeWithClass(container, atom.Div, "map")
+		img = FindNode(mDiv, atom.Img)
 		So(img, ShouldNotBeNil)
 		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
 		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
@@ -510,6 +578,14 @@ func invokeRenderHTMLWithPNG(renderRequest *models.RenderRequest) (*html.Node, s
 	node := nodes[0]
 	So(node.DataAtom, ShouldEqual, atom.Figure)
 	return node, string(response)
+}
+
+func findNodeWithClass(parent *html.Node, a atom.Atom, class string) *html.Node {
+	nodes := findNodesWithClass(parent, a, class)
+	if len(nodes) == 0 {
+		return nil
+	}
+	return nodes[0]
 }
 
 func findNodesWithClass(parent *html.Node, a atom.Atom, class string) []*html.Node {
