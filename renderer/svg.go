@@ -51,14 +51,16 @@ type valueAndColour struct {
 
 // SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as converting topojson to geojson)
 type SVGRequest struct {
-	request                     *models.RenderRequest
-	geoJSON                     *geojson.FeatureCollection
-	svg                         *g2s.SVG
-	ViewBoxWidth, ViewBoxHeight float64
-	breaks                      []*breakInfo // sorted breaks
-	referencePos                float64      // the relative position of the reference tick
-	VerticalLegendWidth         float64      // the view box width of the vertical legend
-	verticalKeyOffset           float64      // offset for the position of the key. // I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+	request             *models.RenderRequest
+	geoJSON             *geojson.FeatureCollection
+	svg                 *g2s.SVG
+	ViewBoxWidth        float64      // the width dimension of the svg (for the viewBox). The FixedWidth if provided, otherwise the average of min and max width, falling back to 400 if nothing specified
+	ViewBoxHeight       float64      // the height dimension of the svg (for the viewBox). Relative to width.
+	breaks              []*breakInfo // sorted breaks
+	referencePos        float64      // the relative position of the reference tick
+	VerticalLegendWidth float64      // the view box width of the vertical legend
+	verticalKeyOffset   float64      // offset for the position of the key. // I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+	responsiveSize      bool         // if true, the svg should scale with the size of the page. Otherwise the size is fixed.
 }
 
 // PrepareSVGRequest wraps the request in an SVGRequest, caching expensive calculations up front
@@ -66,19 +68,22 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 	geoJSON := getGeoJSON(request)
 
 	svg := g2s.New()
-	svg.AppendFeatureCollection(geoJSON)
 
 	width, height := 0.0, 0.0
 	if geoJSON != nil {
-		width, height = getViewBoxDimensions(svg)
+		svg.AppendFeatureCollection(geoJSON)
+		width, height = getViewBoxDimensions(svg, request)
 	}
 
+	responsiveSize := request.MinWidth > 0 && request.MaxWidth > 0
+
 	svgRequest := &SVGRequest{
-		request:       request,
-		geoJSON:       geoJSON,
-		svg:           svg,
-		ViewBoxWidth:  width,
-		ViewBoxHeight: height,
+		request:        request,
+		geoJSON:        geoJSON,
+		svg:            svg,
+		ViewBoxWidth:   width,
+		ViewBoxHeight:  height,
+		responsiveSize: responsiveSize,
 	}
 
 	if request.Choropleth != nil && len(request.Choropleth.Breaks) > 0 {
@@ -117,10 +122,11 @@ func RenderSVG(svgRequest *SVGRequest) string {
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("id", mapID(request)+"-svg"),
-		g2s.WithAttribute("style", "width=100%;"), // an explicit width is necessary for the pan-and-zoom js to work
 		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", vbWidth, vbHeight)),
 		g2s.WithPNGFallback(converter),
-		g2s.WithPattern(missingDataPattern))
+		g2s.WithPattern(missingDataPattern),
+		g2s.WithResponsiveSize(svgRequest.responsiveSize),
+	)
 }
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
@@ -138,8 +144,14 @@ func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
 
 // getViewBoxDimensions assigns the viewbox a fixed width (400) and calculates the height relative to this,
 // returning (width, height)
-func getViewBoxDimensions(svg *g2s.SVG) (float64, float64) {
-	width := 400.0
+func getViewBoxDimensions(svg *g2s.SVG, request *models.RenderRequest) (float64, float64) {
+	width := request.DefaultWidth
+	if width <= 0.0 { // average the min and max width
+		width = (request.MinWidth + request.MaxWidth) / 2
+	}
+	if width <= 0.0 { // use a default width of 400
+		width = 400.0
+	}
 	height := svg.GetHeightForWidth(width, g2s.MercatorProjection)
 	return width, height
 }
@@ -250,7 +262,11 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "horizontal")
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f 90"`, request.Filename, keyClass, svgRequest.ViewBoxWidth)
+	vbHeight := 90.0
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, svgRequest.ViewBoxWidth, vbHeight)
+	if !svgRequest.responsiveSize {
+		svgAttributes += fmt.Sprintf(`width="%.f" height="%.f"`, svgRequest.ViewBoxWidth, vbHeight)
+	}
 
 	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
 	writeHorizontalKeyTitle(request, svgRequest.ViewBoxWidth, content)
@@ -277,7 +293,7 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", svgAttributes, content)
 	}
-	return pngConverter.IncludeFallbackImage(svgAttributes, content.String())
+	return pngConverter.IncludeFallbackImage(svgAttributes, content.String(), svgRequest.ViewBoxWidth, vbHeight)
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
@@ -299,6 +315,9 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	ticks := bytes.NewBufferString("")
 	keyClass := getKeyClass(request, "vertical")
 	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, request.Filename, keyClass, keyWidth, svgHeight)
+	if !svgRequest.responsiveSize {
+		attributes += fmt.Sprintf(`width="%.f" height="%.f"`, keyWidth, svgHeight)
+	}
 
 	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
 	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
@@ -327,7 +346,7 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
-	return pngConverter.IncludeFallbackImage(attributes, content.String())
+	return pngConverter.IncludeFallbackImage(attributes, content.String(), keyWidth, svgHeight)
 }
 
 // getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
@@ -341,14 +360,16 @@ func getKeyClass(request *models.RenderRequest, keyType string) string {
 
 // hasVerticalLegend returns true if the request includes a vertical legend
 func hasVerticalLegend(request *models.RenderRequest) bool {
-	return request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore ||
-		request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter
+	return request.Choropleth != nil &&
+		(request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore ||
+			request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter)
 }
 
 // hasHorizontalLegend returns true if the request includes a horizontal legend
 func hasHorizontalLegend(request *models.RenderRequest) bool {
-	return request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore ||
-		request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter
+	return request.Choropleth != nil &&
+		(request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore ||
+			request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter)
 }
 
 // getVerticalLegendWidth determines the approximate width required for the legend

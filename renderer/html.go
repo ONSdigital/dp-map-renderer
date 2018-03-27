@@ -16,6 +16,7 @@ import (
 	"math"
 )
 
+// Placeholders are inserted into the html to be replaced with the svg map, legends, css and javascript
 const (
 	svgReplacementText           = "[SVG Here]"
 	verticalKeyReplacementText   = "[Vertical key Here]"
@@ -26,6 +27,7 @@ const (
 	heightRatioReplacementText   = "[HEIGHT RATIO]"
 )
 
+// javascriptTemplate is used to enable pan-and-zoom functionality if the containing page supports it
 const javascriptTemplate = `
 	document.addEventListener("DOMContentLoaded", function() {
 		if (svgPanZoom) {
@@ -93,7 +95,7 @@ func renderHTML(request *models.RenderRequest) string {
 func createFigure(request *models.RenderRequest) *html.Node {
 	figure := h.CreateNode("figure", atom.Figure,
 		h.Attr("class", "figure"),
-		h.Attr("id", mapID(request)),
+		h.Attr("id", mapID(request) + "-figure"),
 		"\n")
 	// add title and subtitle as a caption
 	if len(request.Title) > 0 || len(request.Subtitle) > 0 {
@@ -140,6 +142,7 @@ func addSVGDivs(request *models.RenderRequest, parent *html.Node) {
 	}
 
 	parent.AppendChild(h.CreateNode("div", atom.Div,
+		h.Attr("id", mapID(request)),
 		h.Attr("class", "map"),
 		svgReplacementText))
 
@@ -228,12 +231,12 @@ func addJavascriptPlaceholder(request *models.RenderRequest, parent *html.Node) 
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
 func renderSVGs(request *models.RenderRequest, original string) string {
 	svgRequest := PrepareSVGRequest(request)
-	result := strings.Replace(original, svgReplacementText, RenderSVG(svgRequest), 1)
+	result := strings.Replace(original, svgReplacementText, "\n" + RenderSVG(svgRequest) + "\n", 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
-		result = strings.Replace(result, verticalKeyReplacementText, RenderVerticalKey(svgRequest), 1)
+		result = strings.Replace(result, verticalKeyReplacementText, "\n" + RenderVerticalKey(svgRequest) + "\n", 1)
 	}
 	if strings.Contains(result, horizontalKeyReplacementText) {
-		result = strings.Replace(result, horizontalKeyReplacementText, RenderHorizontalKey(svgRequest), 1)
+		result = strings.Replace(result, horizontalKeyReplacementText, "\n" + RenderHorizontalKey(svgRequest) + "\n", 1)
 	}
 	result = strings.Replace(result, javascriptReplacementText, renderJavascript(svgRequest), 1)
 	result = strings.Replace(result, cssReplacementText, renderCss(svgRequest), 1)
@@ -243,33 +246,37 @@ func renderSVGs(request *models.RenderRequest, original string) string {
 // renderJavascript combines the javascriptTemplate with the id of the map, and inserts the correct height ratio.
 func renderJavascript(svgRequest *SVGRequest) string {
 	script := strings.Replace(javascriptTemplate, svgIdReplacement_text, mapID(svgRequest.request)+"-svg", -1)
-	heightRatio := fmt.Sprintf("%.0f", svgRequest.ViewBoxHeight/svgRequest.ViewBoxWidth)
+	heightRatio := fmt.Sprintf("%.2f", svgRequest.ViewBoxHeight/svgRequest.ViewBoxWidth)
 	return strings.Replace(script, heightRatioReplacementText, heightRatio, -1)
 }
 
 // renderCss creates a <script> block that has styles specific to this svg that allow it to be responsive and
 // switch between the horizontal and vertical legends according to window width
 func renderCss(svgRequest *SVGRequest) string {
-	// check for no responsive design
-	if svgRequest.request.MinWidth == 0 || svgRequest.request.MaxWidth == 0 {
-		return ""
-	}
 	mapID := svgRequest.request.Filename
 	css := bytes.NewBufferString("\n<style type=\"text/css\">")
-	// min/max width for svg
-	fmt.Fprintf(css, "\n\t#%s-map, #%s-legend-horizontal {", mapID, mapID)
-	fmt.Fprintf(css, "\n\t\tmin-width: %.0fpx;", svgRequest.request.MinWidth)
-	fmt.Fprintf(css, "\n\t\tmax-width: %.0fpx;", svgRequest.request.MaxWidth)
-	fmt.Fprintf(css, "\n\t}")
+	if svgRequest.responsiveSize {
+		// min/max width for svg
+		fmt.Fprintf(css, "\n\t#%s-map, #%s-legend-horizontal {", mapID, mapID)
+		fmt.Fprintf(css, "\n\t\tmin-width: %.0fpx;", svgRequest.request.MinWidth)
+		fmt.Fprintf(css, "\n\t\tmax-width: %.0fpx;", svgRequest.request.MaxWidth)
+		fmt.Fprintf(css, "\n\t}")
+	} else {
+		// fixed width for svg
+		fmt.Fprintf(css, "\n\t#%s-map, #%s-legend-horizontal {", mapID, mapID)
+		fmt.Fprintf(css, "\n\t\twidth: %.0fpx;", svgRequest.ViewBoxWidth)
+		fmt.Fprintf(css, "\n\t}")
+	}
 
 	if hasVerticalLegend(svgRequest.request) {
 		// relative width of svg and vertical legend
 		svgWidthPercent := math.Floor(svgRequest.ViewBoxWidth / (svgRequest.ViewBoxWidth + svgRequest.VerticalLegendWidth) * 100.0)
 		vlWidthPercent := 100.0 - svgWidthPercent - 1
-		vlMaxWidth := (svgRequest.request.MaxWidth / svgWidthPercent) * vlWidthPercent
-		if hasHorizontalLegend(svgRequest.request) {
-			// both legends
-			switchPoint := ((svgRequest.request.MaxWidth + svgRequest.request.MinWidth) / 2) + svgRequest.VerticalLegendWidth
+		vlMaxWidth := (math.Max(svgRequest.request.MaxWidth, svgRequest.ViewBoxWidth) / svgWidthPercent) * vlWidthPercent
+
+		if hasHorizontalLegend(svgRequest.request) && svgRequest.responsiveSize {
+			// switch between both legends
+			switchPoint := svgRequest.ViewBoxWidth + svgRequest.VerticalLegendWidth
 
 			fmt.Fprintf(css, "\n\t@media (min-width: %.0fpx) {", switchPoint + 1.0)
 			fmt.Fprintf(css, "\n\t\t#%s-legend-horizontal { display: none;}", mapID)
@@ -296,6 +303,7 @@ func renderCss(svgRequest *SVGRequest) string {
 // renderPNGs replaces the SVG marker text with png images
 func renderPNGs(request *models.RenderRequest, original string) string {
 	svgRequest := PrepareSVGRequest(request)
+	svgRequest.responsiveSize = false
 	svg := RenderSVG(svgRequest)
 	result := strings.Replace(original, svgReplacementText, renderPNG(svg), 1)
 	if strings.Contains(result, verticalKeyReplacementText) {
@@ -306,6 +314,8 @@ func renderPNGs(request *models.RenderRequest, original string) string {
 		key := RenderHorizontalKey(svgRequest)
 		result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
 	}
+	result = strings.Replace(result, javascriptReplacementText, "", 1)
+	result = strings.Replace(result, cssReplacementText, renderCss(svgRequest), 1)
 	return result
 }
 

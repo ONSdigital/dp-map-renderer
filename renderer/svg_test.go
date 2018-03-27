@@ -21,7 +21,7 @@ import (
 var pngConverter = geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
 var expectedFallbackImage = `<img alt="Fallback map image for older browsers" src="data:image/png;base64,dGVzdAo=" />`
 
-func TestRenderSVG(t *testing.T) {
+func TestRenderSVGWithFixedSize(t *testing.T) {
 
 	Convey("Successfully render an svg map", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
@@ -29,11 +29,33 @@ func TestRenderSVG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.DefaultWidth = 400.0
+		renderRequest.MaxWidth = 0
+		renderRequest.MinWidth = 0
 
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg width="400" height="748" id="abcd1234-map-svg" style="width=100%;" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg width="400" height="748" id="abcd1234-map-svg" viewBox="0 0 400 748">`)
+	})
+}
+
+func TestRenderSVGWithResponsiveSize(t *testing.T) {
+
+	Convey("Successfully render an svg map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.DefaultWidth = 0
+		renderRequest.MaxWidth = 300
+		renderRequest.MinWidth = 500
+
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="abcd1234-map-svg" style="width:100%;" viewBox="0 0 400 748">`)
 	})
 }
 

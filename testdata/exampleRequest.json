@@ -8,6 +8,8 @@
   "footnotes": ["Do we need footnotes?"],
   "map_type": "choropleth",
   "width": 400,
+  "min_width": 300,
+  "max_width": 500,
   "include_fallback_png": false,
   "choropleth": {
     "reference_value": 13,

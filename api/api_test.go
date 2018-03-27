@@ -42,6 +42,8 @@ func TestSuccessfullyRenderSVGMap(t *testing.T) {
 		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
 		So(w.Body.String(), ShouldContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "Non-UK born population, Great Britain, 2015")
+		So(w.Body.String(), ShouldNotContainSubstring, "[css Here]")
+		So(w.Body.String(), ShouldNotContainSubstring, "[javascript Here]")
 		if saveTestResponse {
 			s := exampleResponseStart + w.Body.String() + exampleResponseEnd
 			ioutil.WriteFile("../testdata/exampleResponse.html", []byte(s), 0644)
@@ -65,7 +67,10 @@ func TestSuccessfullyRenderPNGMap(t *testing.T) {
 		So(w.Header().Get("Content-Type"), ShouldEqual, "text/html")
 		So(w.Body.String(), ShouldNotContainSubstring, "<svg")
 		So(w.Body.String(), ShouldContainSubstring, "<img")
+		So(w.Body.String(), ShouldContainSubstring, `width="400"`)
 		So(w.Body.String(), ShouldContainSubstring, `src="data:image/png;base64,`)
+		So(w.Body.String(), ShouldNotContainSubstring, "[css Here]")
+		So(w.Body.String(), ShouldNotContainSubstring, "[javascript Here]")
 	})
 }
 

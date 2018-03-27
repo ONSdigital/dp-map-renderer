@@ -23,7 +23,7 @@ func trimSpace(s string) string {
 }
 
 func empty(t *testing.T) {
-	expected := `<svg width="400" height="400.45"></svg>`
+	expected := `<svg width="400" height="400"></svg>`
 
 	svg := geojson2svg.New()
 	got := svg.Draw(400, 400.45)
@@ -396,6 +396,17 @@ func TestSVGWithNilGeometry(t *testing.T) {
 	svg.AppendGeometry(nil)
 
 	got := svg.Draw(200, 200)
+	if got != expected {
+		t.Errorf("\nexpected \n%s\ngot \n%s", expected, got)
+	}
+}
+
+func TestSVGWithResponsiveSize(t *testing.T) {
+	expected := `<svg style="width:100%;"><path d="M0.000000 200.000000,0.000000 0.000000,200.000000 0.000000,200.000000 200.000000"/></svg>`
+	svg := geojson2svg.New()
+	addGeometry(t, svg, `{"type": "LineString", "coordinates": [[0,0], [0,400], [400,400], [400,0]]}`)
+
+	got := svg.Draw(200, 200, geojson2svg.WithResponsiveSize(true))
 	if got != expected {
 		t.Errorf("\nexpected \n%s\ngot \n%s", expected, got)
 	}

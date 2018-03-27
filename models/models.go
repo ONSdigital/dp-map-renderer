@@ -35,10 +35,11 @@ type RenderRequest struct {
 	Footnotes          []string    `json:"footnotes,omitempty"`
 	MapType            string      `json:"map_type,omitempty"`
 	Geography          *Geography  `json:"geography,omitempty"`
-	Data               []*DataRow  `json:"data,omitempty"`
+	Data               []*DataRow  `json:"data,omitempty"` // ID's in Data should match values of IDProperty in Geography
 	Choropleth         *Choropleth `json:"choropleth,omitempty"`
-	MinWidth           float64     `json:"min_width,omitempty"`
-	MaxWidth           float64     `json:"max_width,omitempty"`
+	DefaultWidth       float64     `json:"width,omitempty"`     // used when determining the viewBox dimensions and the switch point between displaying the horizontal and vertical legends in responsive design. Optional if min and max width specified
+	MinWidth           float64     `json:"min_width,omitempty"` // the minimum width in a responsive design. optional.
+	MaxWidth           float64     `json:"max_width,omitempty"` // the maximum width in a responsive design. Required is min width specified.
 	IncludeFallbackPng bool        `json:"include_fallback_png"`
 	FontSize           int         `json:"font_size"`
 }
@@ -63,7 +64,7 @@ type Choropleth struct {
 	ValuePrefix              string             `json:"value_prefix,omitempty"`
 	ValueSuffix              string             `json:"value_suffix,omitempty"`
 	Breaks                   []*ChoroplethBreak `json:"breaks,omitempty"`
-	UpperBound               float64            `json:"upper_bound,omitempty"`
+	UpperBound               float64            `json:"upper_bound,omitempty"`                 // used only in displaying the upperbound in the legend
 	HorizontalLegendPosition string             `json:"horizontal_legend_position, omitempty"` // before, after or none (the default)
 	VerticalLegendPosition   string             `json:"vertical_legend_position, omitempty"`   // before, after or none (the default)
 }

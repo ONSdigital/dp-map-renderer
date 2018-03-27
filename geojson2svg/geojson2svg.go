@@ -38,15 +38,16 @@ type ScaleFunc func(float64, float64) (float64, float64)
 //
 // default attributes ()
 type SVG struct {
-	useProp      func(string) bool
-	padding      Padding
-	attributes   map[string]string
-	elements     []*SVGElement
-	titleProp    string
-	patterns     []string
-	pngConverter PNGConverter
-	bounds       *boundingRectangle
-	points       [][]float64
+	useProp        func(string) bool
+	padding        Padding
+	attributes     map[string]string
+	elements       []*SVGElement
+	titleProp      string
+	patterns       []string
+	pngConverter   PNGConverter
+	bounds         *boundingRectangle
+	points         [][]float64
+	responsiveSize bool
 }
 
 // SVGElement represents a single element of an SVG - a Geometry, Feature or FeatureCollection
@@ -69,7 +70,7 @@ type PNGConverter interface {
 	Convert(svg []byte) ([]byte, error)
 	// IncludeFallbackImage generates an svg with the given attributes, content and a fallback image:
 	// <svg svgAttributes><switch><g>svgContent</g><foreignObject><image src="data:image/png;base64,..." /></foreignObject></svg>
-	IncludeFallbackImage(svgAttributes string, svgContent string) string
+	IncludeFallbackImage(svgAttributes string, svgContent string, width float64, height float64) string
 }
 
 // boundingRectangle is used to cache the result of calculations in getBoundingRectangle
@@ -119,14 +120,29 @@ func (svg *SVG) DrawWithProjection(width, height float64, projection ScaleFunc, 
 		}
 	}
 
-	attributes := fmt.Sprintf(`width="%g" height="%g"%s`, width, height, makeAttributes(svg.attributes))
+	attributes := makeSVGAttributes(width, height, svg)
 
 	patterns := svg.getPatterns()
 
 	if svg.pngConverter == nil {
-		return fmt.Sprintf(`<svg %s>%s%s</svg>`, attributes, patterns, content)
+		return fmt.Sprintf(`<svg%s>%s%s</svg>`, attributes, patterns, content)
 	}
-	return svg.pngConverter.IncludeFallbackImage(attributes, patterns+content.String())
+	return svg.pngConverter.IncludeFallbackImage(attributes, patterns+content.String(), width, height)
+}
+
+// makeSVGAttributes converts the avg attributes to a string and adds either width and height or style="width:100%" attributes.
+func makeSVGAttributes(width float64, height float64, svg *SVG) string {
+	if svg.responsiveSize {
+		// copy the map and insert style (append any existing style)
+		attr := make(map[string]string)
+		for key, value := range svg.attributes {
+			attr[key] = value
+		}
+		attr["style"] = `width:100%;` + attr["style"]
+		return makeAttributes(attr)
+	}
+	// use a fixed width and height
+	return fmt.Sprintf(` width="%.f" height="%.f"%s`, width, height, makeAttributes(svg.attributes))
 }
 
 // AppendGeometry adds a geojson Geometry to the svg.
@@ -196,6 +212,13 @@ func WithPattern(pattern string) Option {
 func WithPNGFallback(converter PNGConverter) Option {
 	return func(svg *SVG) {
 		svg.pngConverter = converter
+	}
+}
+
+// WithResponsiveSize configures the SVG to include a style="width:100%" attribute instead of fixed width and height attributes.
+func WithResponsiveSize(isResponsive bool) Option {
+	return func(svg *SVG) {
+		svg.responsiveSize = isResponsive
 	}
 }
 

@@ -30,7 +30,7 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -64,7 +64,7 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 
 		fmt.Println(html)
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldBeNil)
@@ -103,7 +103,7 @@ func TestRenderHTMLWithPNG_ConverterNotAvailable(t *testing.T) {
 		container, _ := invokeRenderHTMLWithPNG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map")
+		So(GetAttribute(container, "id"), ShouldEqual, renderRequest.Filename+"-map-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -249,12 +249,13 @@ func TestRenderJavascript(t *testing.T) {
 		So(js, ShouldNotBeEmpty)
 		So(js, ShouldNotContainSubstring, `[javascript Here]`)
 		So(js, ShouldContainSubstring, `'abcd1234-map-svg'`)
+		So(js, ShouldContainSubstring, `svg.style.height = Math.round(svg.clientWidth * 1.87) + "px"`)
 	})
 }
 
-func TestNotRenderCss(t *testing.T) {
+func TestRenderCssForVerticalLegend(t *testing.T) {
 
-	Convey("Should not render a style block unless min/max width are specified", t, func() {
+	Convey("Should render a style block when no min/max specified but vertical legend included", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
 		renderRequest, err := models.CreateRenderRequest(reader)
 		if err != nil {
@@ -262,15 +263,18 @@ func TestNotRenderCss(t *testing.T) {
 		}
 		renderRequest.MinWidth = 0
 		renderRequest.MaxWidth = 0
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
 
 		_, result := invokeRenderHTMLWithSVG(renderRequest)
 
-		So(result, ShouldNotContainSubstring, "<style")
-		So(result, ShouldNotContainSubstring, "[css Here]")
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `abcd1234-legend-vertical`)
+
 	})
 }
 
-func TestRenderCss(t *testing.T) {
+func TestRenderResponsiveCss(t *testing.T) {
 
 	Convey("Should render a style block to enable the map to be responsive", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
@@ -290,6 +294,31 @@ func TestRenderCss(t *testing.T) {
 		So(style, ShouldContainSubstring, `min-width: 300px;`)
 		So(style, ShouldContainSubstring, `max-width: 500px;`)
 		So(style, ShouldNotContainSubstring, `@media (min-width: 523px) {`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
+func TestRenderCss(t *testing.T) {
+
+	Convey("Should render a style block with a fixed width", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 0
+		renderRequest.MaxWidth = 0
+		renderRequest.DefaultWidth = 450
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `width: 450px;`)
+		So(style, ShouldNotContainSubstring, `@media`)
 		So(style, ShouldNotContainSubstring, `EXTRA`)
 		So(style, ShouldNotContainSubstring, `MISSING`)
 	})
