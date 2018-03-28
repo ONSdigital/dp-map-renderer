@@ -21,34 +21,8 @@ const (
 	svgReplacementText           = "[SVG Here]"
 	verticalKeyReplacementText   = "[Vertical key Here]"
 	horizontalKeyReplacementText = "[Horizontal key Here]"
-	javascriptReplacementText    = "[javascript Here]"
-	cssReplacementText           = "[css Here]"
-	svgIdReplacement_text        = "[SVG ID]"
-	heightRatioReplacementText   = "[HEIGHT RATIO]"
+	cssReplacementText           = "[CSS Here]"
 )
-
-// javascriptTemplate is used to enable pan-and-zoom functionality if the containing page supports it
-const javascriptTemplate = `
-<script type="text/javascript">
-	document.addEventListener("DOMContentLoaded", function() {
-		if (svgPanZoom) {
-			var setSvgHeight = function() {
-				var svg = document.getElementById('[SVG ID]');
-				svg.style.height = Math.round(svg.clientWidth * [HEIGHT RATIO]) + "px"
-			};
-			setSvgHeight();
-			var panZoom = window.panZoom = svgPanZoom('#[SVG ID]', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true, fit: true, center: true});
-
-			window.addEventListener('resize', function(){
-			  setSvgHeight();
-	          panZoom.resize();
-	          panZoom.fit();
-	          panZoom.center();
-	        });
-		}
-      });
-</script>
-`
 
 var (
 	newLine      = regexp.MustCompile(`\n`)
@@ -85,7 +59,6 @@ func renderHTML(request *models.RenderRequest) string {
 	figure.AppendChild(svgContainer)
 	addCssPlaceholder(request, svgContainer)
 	addSVGDivs(request, svgContainer)
-	addJavascriptPlaceholder(request, svgContainer)
 	addFooter(request, figure)
 	var buf bytes.Buffer
 	html.Render(&buf, figure)
@@ -229,11 +202,6 @@ func addCssPlaceholder(request *models.RenderRequest, parent *html.Node) {
 	parent.AppendChild(h.Text(cssReplacementText))
 }
 
-// addJavascript adds a script node containing a placeholder for the script to activate pan and zoom functionality if it is offered by the containing page.
-func addJavascriptPlaceholder(request *models.RenderRequest, parent *html.Node) {
-	parent.AppendChild(h.Text(javascriptReplacementText))
-}
-
 // renderSVGs replaces the SVG marker text with the actual SVG(s)
 func renderSVGs(request *models.RenderRequest, original string) string {
 	svgRequest := PrepareSVGRequest(request)
@@ -244,16 +212,8 @@ func renderSVGs(request *models.RenderRequest, original string) string {
 	if strings.Contains(result, horizontalKeyReplacementText) {
 		result = strings.Replace(result, horizontalKeyReplacementText, "\n" + RenderHorizontalKey(svgRequest) + "\n", 1)
 	}
-	result = strings.Replace(result, javascriptReplacementText, renderJavascript(svgRequest), 1)
 	result = strings.Replace(result, cssReplacementText, renderCss(svgRequest), 1)
 	return result
-}
-
-// renderJavascript combines the javascriptTemplate with the id of the map, and inserts the correct height ratio.
-func renderJavascript(svgRequest *SVGRequest) string {
-	script := strings.Replace(javascriptTemplate, svgIdReplacement_text, mapID(svgRequest.request)+"-svg", -1)
-	heightRatio := fmt.Sprintf("%.2f", svgRequest.ViewBoxHeight/svgRequest.ViewBoxWidth)
-	return strings.Replace(script, heightRatioReplacementText, heightRatio, -1)
 }
 
 // renderCss creates a <script> block that has styles specific to this svg that allow it to be responsive and
@@ -326,7 +286,6 @@ func renderPNGs(request *models.RenderRequest, original string) string {
 			result = strings.Replace(result, horizontalKeyReplacementText, renderPNG(key), 1)
 		}
 	}
-	result = strings.Replace(result, javascriptReplacementText, "", 1)
 	result = strings.Replace(result, cssReplacementText, "", 1)
 	return result
 }

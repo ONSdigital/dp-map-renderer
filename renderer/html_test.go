@@ -302,25 +302,6 @@ func TestRenderHTML_BothLegends(t *testing.T) {
 	})
 }
 
-func TestRenderJavascript(t *testing.T) {
-
-	Convey("Should render a javascript block to enable svg pan and zoom", t, func() {
-		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
-		renderRequest, err := models.CreateRenderRequest(reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		_, result := invokeRenderHTMLWithSVG(renderRequest)
-
-		js := regexp.MustCompile(`(?s)<script type="text/javascript">.*</script>`).FindString(result)
-		So(js, ShouldNotBeEmpty)
-		So(js, ShouldNotContainSubstring, `[javascript Here]`)
-		So(js, ShouldContainSubstring, `'map-abcd1234-map-svg'`)
-		So(js, ShouldContainSubstring, `svg.style.height = Math.round(svg.clientWidth * 1.87) + "px"`)
-	})
-}
-
 func TestRenderCssForVerticalLegend(t *testing.T) {
 
 	Convey("Should render a style block when no min/max specified but vertical legend included", t, func() {

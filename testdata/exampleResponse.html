@@ -83,27 +83,7 @@ The output also includes a style block to support responsive resizing.
 <polygon points="20 16 20 18 18 20 16 20"></polygon>
 </g>
 </pattern></defs><g id="map-abcd1234-legend-vertical-container"><text x="61.201200" y="37.400000" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="99" lengthAdjust="spacingAndGlyphs"> % non-UK born</text><g id="map-abcd1234-legend-vertical-key" transform="translate(43.197200, 74.800000)"><rect class="keyColour" height="66.488889" width="8" y="531.911111" style="stroke-width: 0.5; stroke: black; fill: rgb(241, 238, 246);"></rect><rect class="keyColour" height="55.407407" width="8" y="476.503704" style="stroke-width: 0.5; stroke: black; fill: rgb(189, 201, 225);"></rect><rect class="keyColour" height="99.733333" width="8" y="376.770370" style="stroke-width: 0.5; stroke: black; fill: rgb(116, 169, 207);"></rect><rect class="keyColour" height="144.059259" width="8" y="232.711111" style="stroke-width: 0.5; stroke: black; fill: rgb(43, 140, 190);"></rect><rect class="keyColour" height="232.711111" width="8" y="0.000000" style="stroke-width: 0.5; stroke: black; fill: rgb(4, 90, 141);"></rect><g class="map__tick" transform="translate(0, 598.400000)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">0</text></g><g class="map__tick" transform="translate(0, 531.911111)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">6</text></g><g class="map__tick" transform="translate(0, 476.503704)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">11</text></g><g class="map__tick" transform="translate(0, 376.770370)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">20</text></g><g class="map__tick" transform="translate(0, 232.711111)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">33</text></g><g class="map__tick" transform="translate(0, 0.000000)"><line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line><text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">54</text></g><g class="map__tick" transform="translate(0, 454.340741)"><line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line><text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="51" lengthAdjust="spacingAndGlyphs">UK avg.</text><text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">13</text></g></g><g class="missingPattern" transform="translate(5.000000, 710.600000)"><rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#map-abcd1234-vertical-nodata);"></rect><text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="100" lengthAdjust="spacingAndGlyphs">data unavailable</text></g></g></svg>
-</div>
-<script type="text/javascript">
-	document.addEventListener("DOMContentLoaded", function() {
-		if (svgPanZoom) {
-			var setSvgHeight = function() {
-				var svg = document.getElementById('map-abcd1234-map-svg');
-				svg.style.height = Math.round(svg.clientWidth * 1.87) + "px"
-			};
-			setSvgHeight();
-			var panZoom = window.panZoom = svgPanZoom('#map-abcd1234-map-svg', {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true, fit: true, center: true});
-
-			window.addEventListener('resize', function(){
-			  setSvgHeight();
-	          panZoom.resize();
-	          panZoom.fit();
-	          panZoom.center();
-	        });
-		}
-      });
-</script>
-</div><footer class="figure__footer">
+</div></div><footer class="figure__footer">
 <p class="figure__licence">© Crown copyright 2015</p>
 <p class="figure__source">Source: <a href="http://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/internationalmigration/articles/populationbycountryofbirthandnationalityreport/previousReleases">source text</a></p>
 <p class="figure__notes">Notes</p>
