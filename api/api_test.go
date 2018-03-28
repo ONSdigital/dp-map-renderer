@@ -152,9 +152,33 @@ var exampleResponseStart = `
 </head>
 <body>
 <p>This page imports the svg-pan-zoom library, which is then used by the map-renderer output to enable panning and zooming.
-The output also includes a style block to support responsive resizing.
+The renderer output also includes a style block to support responsive resizing.
 </p>
 `
 var exampleResponseEnd = `
+<script type="text/javascript" src="https://cdn.ons.gov.uk/vendor/svg-pan-zoom/3.5.2/svg-pan-zoom.min.js"></script>
+<script type="text/javascript">
+	document.addEventListener("DOMContentLoaded", function() {
+		var mapId = "map-abcd1234-map-svg"
+		var svg = document.getElementById(mapId);
+		if (svg && svg.clientWidth > 0 && svg.hasAttribute("viewBox")) {
+			viewBox = svg.getAttribute("viewBox").split(" ") // x1 y1 x2 y2
+			heightRatio = parseInt(viewBox[3]) / parseInt(viewBox[2])
+			var setSvgHeight = function() {	
+				svg.style.height = Math.round(svg.clientWidth * heightRatio) + "px"
+				return true;
+			};
+			setSvgHeight();
+			var panZoom = window.panZoom = svgPanZoom('#' + mapId, {minZoom: 0.75, maxZoom: 100, zoomScaleSensitivity: 0.4, mouseWheelZoomEnabled: false, controlIconsEnabled: true, fit: true, center: true});
+	
+			window.addEventListener('resize', function(){
+				setSvgHeight()
+				panZoom.resize();
+				panZoom.fit();
+				panZoom.center();
+			});
+		}
+	});
+</script>
 </body>
 </html>`
