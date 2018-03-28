@@ -3,6 +3,9 @@ dp-map-renderer
 
 Renders an SVG representation of a choropleth map given a topojson file and data.
 
+See the [exampleResponse](testdata/exampleResponse.html) for an illustration of the sort of map that can be generated.
+The testdata folder also includes example requests for both the render and analyse endpoints.
+
 
 | Environment variable       | Default                  | Description                                            |
 | -------------------------- | ------------------------ | -----------                                            |
@@ -14,7 +17,7 @@ Renders an SVG representation of a choropleth map given a topojson file and data
 
 | url                   | Method | Parameter values             | Description                                                                                                                                                                                                                                       |
 | ---                   | ------ | ----------------             | -----------                                                                                                                                                                                                                                       |
-| /render/{render_type} | POST   | render_type = `svg` or `png` | Renders the (json) data provided in the post body as an html figure with either svg or png map                                                                                                                                                    |
+| /render/{render_type} | POST   | render_type = `svg` or `png` | Renders the (json) data provided in the post body as an html figure with either an svg or png map                                                                                                                                                    |
 | /analyse              | POST   |                              | Accepts json containing a topojson topology and a string representation of a csv file. Validates that the csv file matches the topology and returns the contents of the csv in json format. Also identifies natural breaks for the choropleth map |
 
 ### Healthchecking
