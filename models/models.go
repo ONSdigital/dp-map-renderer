@@ -39,7 +39,7 @@ type RenderRequest struct {
 	Choropleth         *Choropleth `json:"choropleth,omitempty"`
 	DefaultWidth       float64     `json:"width,omitempty"`     // used when determining the viewBox dimensions and the switch point between displaying the horizontal and vertical legends in responsive design. Optional if min and max width specified
 	MinWidth           float64     `json:"min_width,omitempty"` // the minimum width in a responsive design. optional.
-	MaxWidth           float64     `json:"max_width,omitempty"` // the maximum width in a responsive design. Required is min width specified.
+	MaxWidth           float64     `json:"max_width,omitempty"` // the maximum width in a responsive design. Required if min width specified.
 	IncludeFallbackPng bool        `json:"include_fallback_png"`
 	FontSize           int         `json:"font_size"`
 }

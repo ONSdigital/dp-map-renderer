@@ -1,0 +1,278 @@
+swagger: "2.0"
+info:
+  description: "An API used to generate choropleth maps in svg or png format from a json source. Returns html with the svg plus css to enable a responsive design."
+  version: "1.0.0"
+  title: "Maps API"
+  license:
+    name: "Open Government Licence v3.0"
+    url: "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+schemes:
+- "http"
+paths:
+  /render/{render_type}:
+    post:
+      summary: "Generate a choropleth map from json input"
+      description: |
+        Create an svg or png representation of a map. Returns an html figure containing a div structure to hold the images
+        (the map plus a horizontal and/or vertical legend), plus a style block that enables the map to responsively
+        resize itself and show/hide the vertical and horizontal legends according to page width.
+      consumes:
+        - "application/json"
+      produces:
+        - "text/html"
+      parameters:
+        - name: render_type
+          type: string
+          enum: [svg, png]
+          required: true
+          description: "The map format required"
+          in: path
+        - name: map_definition
+          schema:
+            $ref: '#/definitions/RenderRequest'
+          required: true
+          description: "The definition of the map to be generated"
+          in: body
+      responses:
+        '200':
+          description: "An appropriate representation of the map is returned in the body"
+        '400':
+          description: "Invalid request body"
+        '404':
+          description: "Unknown render type"
+        '500':
+          $ref: '#/responses/InternalError'
+  /analyse:
+    post:
+      summary: "Parse a csv file and json topology"
+      description: |
+        Parses a csv file to ensure that it matches the given topology.
+        Calculates the natural breaks in the data for all numbers of classes (map colours) from 2 classes to 11 classes.
+        Also makes a best-guess suggestion as to the best number of classes to use.
+        Returns a json representation of the csv plus break information.
+        The returned object requires further manipulation to create json suitable for posting to the /render/... endpoint.
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: analyse_request
+          schema:
+            $ref: '#/definitions/AnalyseRequest'
+          required: true
+          description: "Object containing the csv to be parsed, a topojson-formatted topology, plus supporting information"
+          in: body
+      responses:
+        '200':
+          description: "A json representation of the csv is returned in the body, with additional break information"
+          schema:
+            $ref: '#/definitions/AnalyseResponse'
+        '400':
+          description: "Invalid request body"
+        '500':
+          $ref: '#/responses/InternalError'
+
+responses:
+  InternalError:
+    description: "Failed to process the request due to an internal error"
+
+definitions:
+
+  RenderRequest:
+    description: "A definition of a map that should be rendered"
+    type: object
+    required: ["filename","geography"]
+    properties:
+      filename:
+        type: string
+        description: "A unique id for the map"
+      title:
+        type: string
+        description: "The main title of the map"
+      subtitle:
+        type: string
+        description: "An additional title or short description of the map"
+      source:
+        type: string
+        description: "Where the data in the map came from"
+      source_link:
+        type: string
+        description: "A url for the source"
+      licence:
+        type: string
+        description: "Text description of the license under which the map data is rendered"
+      footnotes:
+        type: array
+        description: "Notes associated with the map"
+        items:
+          type: string
+      geography:
+        $ref: '#/definitions/Geography'
+        description: |
+          The topology to display as a map (will be transformed by the MercatorProjection),
+          plus information about which properties contain the id and name of each region.
+      data:
+        type: array
+        description: |
+          The values used to provide colour for each region in the map.
+        items:
+          $ref: '#/definitions/DataRow'
+      choropleth:
+        $ref: '#/definitions/Choropleth'
+        description: |
+          The details that provide the colour gradients on the map.
+      width:
+        type: number
+        description: "used when determining the viewBox dimensions and the switch point between displaying the horizontal and vertical legends in responsive design. Optional if min and max width specified"
+      min_width:
+        type: number
+        description: "the minimum width in a responsive design. optional."
+      max_width:
+        type: number
+        description: "the maximum width in a responsive design. Required if min width specified."
+      include_fallback_png:
+        type: boolean
+        description: "Whether to include an inline png image as a fallback for browsers that do not support svg. Defaults to false."
+      font_size:
+        type: number
+        description: "The font size at which the svg will be rendered. Used to determine the width of text when laying out legends. Defaults to 14."
+
+  Geography:
+    description: "holds the topojson topology and supporting information"
+    type: object
+    properties:
+      topojson:
+        type: object
+        description: "A Topology in topojson format. See: https://github.com/topojson/topojson/wiki/Introduction"
+      id_property:
+        type: string
+        description: "The name of the property that identifies the id of a region (used to look up the value in data)."
+      name_property:
+        type: string
+        description: "The name of the property that identifies the name of a region"
+
+
+  DataRow:
+    description: "holds a single row of data."
+    type: object
+    properties:
+      id:
+        type: string
+        description: "The id of a region - must match the id of a region defined in the topojson above"
+      value:
+        type: number
+        description: "The value for a region - defines the colour of the region (see also ChoroplethBreaks)"
+
+  Choropleth:
+    description: "contains details required to create a choropleth map"
+    type: object
+    properties:
+      reference_value:
+        type: number
+        description: "The reference value for the map (e.g. the UK average of whatever is being measured)"
+      reference_value_text:
+        type: string
+        description: "The text to display for the reference value. Appears in the legend."
+      value_prefix:
+        type: string
+        description: "Text to display before the value (e.g. '£')"
+      value_suffix:
+        type: string
+        description: "Text to display after the value (e.g. 'per household')"
+      breaks :
+        type: array
+        description: "The breaks in the data - each break represents a different colour on the map"
+        items:
+          $ref: '#/definitions/ChoroplethBreak'
+      upper_bound:
+        type: number
+        description: "The value to display as the upper bound in the legend. Optional - defaults to the largest value in the data."
+      horizontal_legend_position:
+        type: string
+        description: "The relative position of the horizontal legend. Optional - defaults to 'none'."
+        enum: ["before","after","none"]
+      vertical_legend_position:
+        type: string
+        description: "The relative position of the vertical legend. Optional - defaults to 'none'."
+        enum: ["before","after","none"]
+
+  ChoroplethBreak:
+    description: |
+      Represents a single break - the point at which a colour changes.
+      Only the lower bounds are defined - the upper bound is either the lower bound of the next break,
+      or the maximum value in the dataset if no next break.
+    type: object
+    properties:
+      lower_bound:
+        type: number
+        description: "The lowest value that will have this colour applied."
+      color:
+        type: string
+        description: "The colour to apply"
+
+  AnalyseRequest:
+    description: "A model for the response body when retrieving a filter output"
+    type: object
+    required: ["geography", "csv", "id_index", "value_index"]
+    properties:
+      geography:
+        $ref: '#/definitions/Geography'
+        description: |
+          The topology to display as a map,
+          plus information about which properties contain the id and name of each region.
+      csv:
+        type: string
+        description: "A csv file"
+      id_index:
+        type: number
+        description: "The (zero-based) index of the column containing ids in the csv file"
+      value_index:
+        type: number
+        description: "The (zero-based) index of the column containing values in the csv file"
+      has_header_row:
+        type: boolean
+        description: "Whether the csv file has a header row"
+
+
+  AnalyseResponse:
+    description: "The response to an analyse request - contains a json representation of the csv and information about breaks"
+    type: object
+    properties:
+      data:
+        type: array
+        description: "The values used to provide colour for each region in the map."
+        items:
+          $ref: '#/definitions/DataRow'
+      messages:
+        type: array
+        description: "Messages to be displayed to the user"
+        items:
+          $ref: '#/definitions/Message'
+      breaks:
+        type: array
+        description: "A two dimensional array of possible breaks. Contains one array of breaks for each class count from 2 to 11"
+        items:
+          type: array
+          description: "An array of breaks for n classes"
+          items:
+            type: number
+      best_fit_class_count:
+        type: number
+        description: "A best guess at the number of classes that best fits the data."
+      min_value:
+        type: number
+        description: "The minimum value in the data."
+      max_value:
+        type: number
+        description: "The maximum value in the data."
+
+  Message:
+    description: "A message to be displayed to the user"
+    type: object
+    properties:
+      level:
+        type: string
+        description: "The type of message: info, warn or error"
+      text:
+        type: string
+        description: "The text of the message"
