@@ -21,7 +21,7 @@ import (
 var pngConverter = geojson2svg.NewPNGConverter("sh", []string{"-c", `echo "test" >> ` + geojson2svg.ArgPNGFilename})
 var expectedFallbackImage = `<img alt="Fallback map image for older browsers" src="data:image/png;base64,dGVzdAo=" />`
 
-func TestRenderSVG(t *testing.T) {
+func TestRenderSVGWithFixedSize(t *testing.T) {
 
 	Convey("Successfully render an svg map", t, func() {
 		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
@@ -29,11 +29,33 @@ func TestRenderSVG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.DefaultWidth = 400.0
+		renderRequest.MaxWidth = 0
+		renderRequest.MinWidth = 0
 
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg width="400" height="748" id="map-abcd1234-svg" viewBox="0 0 400 748">`)
+		So(result, ShouldStartWith, `<svg width="400" height="748" id="map-abcd1234-map-svg" viewBox="0 0 400 748">`)
+	})
+}
+
+func TestRenderSVGWithResponsiveSize(t *testing.T) {
+
+	Convey("Successfully render an svg map", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.DefaultWidth = 0
+		renderRequest.MaxWidth = 300
+		renderRequest.MinWidth = 500
+
+		result := RenderSVG(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-map-svg" style="width:100%;" viewBox="0 0 400 748">`)
 	})
 }
 
@@ -162,59 +184,6 @@ func TestSVGHasWidthAndHeight(t *testing.T) {
 		So(svg.Width, ShouldEqual, "400")
 		So(svg.Height, ShouldEqual, "329")
 	})
-
-	Convey("simpleSVG should use given width and calculate proportional height", t, func() {
-
-		renderRequest := &models.RenderRequest{
-			Filename:  "testname",
-			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
-			Width:     800,
-		}
-
-		result := RenderSVG(PrepareSVGRequest(renderRequest))
-
-		svg, e := unmarshalSimpleSVG(result)
-		So(e, ShouldBeNil)
-		So(svg.Width, ShouldEqual, "800")
-		So(svg.Height, ShouldEqual, "658")
-	})
-
-	Convey("simpleSVG should use given width and height", t, func() {
-
-		renderRequest := &models.RenderRequest{
-			Filename:  "testname",
-			Geography: &models.Geography{Topojson: simpleTopology(), IDProperty: "code", NameProperty: "name"},
-			Width:     800,
-			Height:    600,
-		}
-
-		result := RenderSVG(PrepareSVGRequest(renderRequest))
-
-		svg, e := unmarshalSimpleSVG(result)
-		So(e, ShouldBeNil)
-		So(svg.Width, ShouldEqual, "800")
-		So(svg.Height, ShouldEqual, "600")
-	})
-}
-
-func TestSVGHasCorrectViewBox(t *testing.T) {
-
-	Convey("Report correctly scaled viewbox when height provided for svg", t, func() {
-		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
-		renderRequest, err := models.CreateRenderRequest(reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		renderRequest.Height = 600
-
-		result := RenderSVG(PrepareSVGRequest(renderRequest))
-
-		svg, e := unmarshalSimpleSVG(result)
-		So(e, ShouldBeNil)
-		So(svg.Width, ShouldEqual, "400")
-		So(svg.Height, ShouldEqual, "600")
-		So(svg.ViewBox, ShouldEqual, "0 0 400 748")
-	})
 }
 
 func TestSVGContainsClassName(t *testing.T) {
@@ -251,8 +220,8 @@ func TestSVGContainsIDs(t *testing.T) {
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].ID, ShouldEqual, "testname-f0")
-		So(svg.Paths[1].ID, ShouldEqual, "testname-f1")
+		So(svg.Paths[0].ID, ShouldEqual, "map-testname-f0")
+		So(svg.Paths[1].ID, ShouldEqual, "map-testname-f1")
 	})
 }
 
@@ -315,11 +284,11 @@ func TestSVGHasMissingValuePatternAndCorrectTitle(t *testing.T) {
 		result := RenderSVG(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldContainSubstring, `<defs><pattern id="testname-nodata"`)
+		So(result, ShouldContainSubstring, `<defs><pattern id="map-testname-nodata"`)
 		svg, e := unmarshalSimpleSVG(result)
 		So(e, ShouldBeNil)
 		So(len(svg.Paths), ShouldEqual, 2)
-		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: url(#testname-nodata);")
+		So(svg.Paths[0].Style, ShouldContainSubstring, "fill: url(#map-testname-nodata);")
 		So(svg.Paths[1].Style, ShouldContainSubstring, "fill: green;")
 
 		So(svg.Paths[0].Title.Value, ShouldContainSubstring, "feature 0 "+MissingDataText)
@@ -339,9 +308,9 @@ func TestRenderVerticalKey(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
-		assertKeyContents(result, renderRequest)
+		assertKeyContents(result, renderRequest, "vertical")
 
 	})
 }
@@ -360,7 +329,7 @@ func TestRenderVerticalKeyWithoutReferenceValue(t *testing.T) {
 		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-vertical" class="map_key_vertical"`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-vertical-svg" class="map_key_vertical`)
 		So(getWidth(result), ShouldEqual, 122)
 
 	})
@@ -378,11 +347,12 @@ func TestRenderHorizontalKey(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -401,11 +371,12 @@ func TestRenderHorizontalKeyWithLongTitle(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="398" lengthAdjust="spacingAndGlyphs">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -423,11 +394,12 @@ func TestRenderHorizontalKeyWithLongReferenceText(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(360.000000, 0)">`)
-		assertKeyContents(result, renderRequest)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(20.000000, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(360.000000, 0)">`)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -446,11 +418,12 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnLeft(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(228.588667, 0)">`)
-		assertKeyContents(result, renderRequest)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(164.010933, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(228.588667, 0)">`)
+		assertKeyContents(result, renderRequest, "horizontal")
 	})
 
 }
@@ -469,11 +442,90 @@ func TestRenderHorizontalKeyWithLongerReferenceTextOnRight(t *testing.T) {
 		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
 
 		So(result, ShouldNotBeNil)
-		So(result, ShouldStartWith, `<svg id="abcd1234-legend-horizontal" class="map_key_horizontal" width="400" height="90" viewBox="0 0 400 90">`)
+		So(result, ShouldStartWith, `<svg id="map-abcd1234-legend-horizontal-svg" class="map_key_horizontal`)
+		So(result, ShouldContainSubstring, ` viewBox="0 0 400 90"`)
 		So(result, ShouldContainSubstring, `<text x="200.000000" y="6" dy=".5em" style="text-anchor: middle;" class="keyText">`)
-		So(result, ShouldContainSubstring, `<g id="abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
-		So(result, ShouldContainSubstring, `<g class="tick" transform="translate(318.955533, 0)">`)
-		assertKeyContents(result, renderRequest)
+		So(result, ShouldContainSubstring, `<g id="map-abcd1234-legend-horizontal-key" transform="translate(3.700200, 20)">`)
+		So(result, ShouldContainSubstring, `<g class="map__tick" transform="translate(318.955533, 0)">`)
+		assertKeyContents(result, renderRequest, "horizontal")
+	})
+
+}
+
+func TestRenderHorizontalKeyClassChangesWhenVerticalKeyAlsoPresent(t *testing.T) {
+	Convey("RenderHorizontalKey should include an additional class when vertical key also present", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_horizontal map_key_horizontal_both"`)
+	})
+
+	Convey("RenderHorizontalKey should not include additional class when vertical key absent", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+
+		result := RenderHorizontalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_horizontal"`)
+	})
+
+}
+
+func TestRenderVerticalKeyClassChangesWhenHorizontalKeyAlsoPresent(t *testing.T) {
+	Convey("RenderVerticalKey should include an additional class when horizontal key also present", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.HorizontalLegendPosition = models.LegendPositionBefore
+
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_vertical map_key_vertical_both"`)
+	})
+
+	Convey("RenderVerticalKey should not include additional class when horizontal key absent", t, func() {
+
+		UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = models.LegendPositionBefore
+		renderRequest.Choropleth.HorizontalLegendPosition = "none"
+
+		result := RenderVerticalKey(PrepareSVGRequest(renderRequest))
+
+		So(result, ShouldNotBeNil)
+		So(result, ShouldContainSubstring, `class="map_key_vertical"`)
 	})
 
 }
@@ -627,14 +679,14 @@ func TestRenderVerticalKeyWidth(t *testing.T) {
 
 }
 
-func assertKeyContents(result string, renderRequest *models.RenderRequest) {
+func assertKeyContents(result string, renderRequest *models.RenderRequest, align string) {
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValuePrefix)
 	So(result, ShouldContainSubstring, renderRequest.Choropleth.ValueSuffix)
 	for _, b := range renderRequest.Choropleth.Breaks {
 		So(result, ShouldContainSubstring, "fill: "+b.Colour)
 		So(result, ShouldContainSubstring, fmt.Sprintf("%g", b.LowerBound))
 	}
-	So(result, ShouldContainSubstring, "fill: url(#"+renderRequest.Filename+"-nodata)")
+	So(result, ShouldContainSubstring, "fill: url(#map-"+renderRequest.Filename+"-"+align+"-nodata)")
 	So(result, ShouldContainSubstring, MissingDataText)
 	// ensure all text has a class applied
 	textElements := regexp.MustCompile("<text").FindAllStringIndex(result, -1)
@@ -652,7 +704,7 @@ func assertKeyContents(result string, renderRequest *models.RenderRequest) {
 }
 
 func getWidth(result string) int {
-	widthRE := regexp.MustCompile(`width="([\d]+)"`)
+	widthRE := regexp.MustCompile(`viewBox="0 0 ([\d]+) \d+"`)
 	submatch := widthRE.FindStringSubmatch(result)
 	So(len(submatch), ShouldEqual, 2)
 	width, err := strconv.Atoi(submatch[1])

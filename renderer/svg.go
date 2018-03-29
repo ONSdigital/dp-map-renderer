@@ -51,10 +51,16 @@ type valueAndColour struct {
 
 // SVGRequest wraps a models.RenderRequest and allows caching of expensive calculations (such as converting topojson to geojson)
 type SVGRequest struct {
-	request                      *models.RenderRequest
-	geoJSON                      *geojson.FeatureCollection
-	svg                          *g2s.SVG
-	width, height, viewBoxHeight float64
+	request             *models.RenderRequest
+	geoJSON             *geojson.FeatureCollection
+	svg                 *g2s.SVG
+	ViewBoxWidth        float64      // the width dimension of the svg (for the viewBox). The FixedWidth if provided, otherwise the average of min and max width, falling back to 400 if nothing specified
+	ViewBoxHeight       float64      // the height dimension of the svg (for the viewBox). Relative to width.
+	breaks              []*breakInfo // sorted breaks
+	referencePos        float64      // the relative position of the reference tick
+	VerticalLegendWidth float64      // the view box width of the vertical legend
+	verticalKeyOffset   float64      // offset for the position of the key. // I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+	responsiveSize      bool         // if true, the svg should scale with the size of the page. Otherwise the size is fixed.
 }
 
 // PrepareSVGRequest wraps the request in an SVGRequest, caching expensive calculations up front
@@ -62,14 +68,31 @@ func PrepareSVGRequest(request *models.RenderRequest) *SVGRequest {
 	geoJSON := getGeoJSON(request)
 
 	svg := g2s.New()
-	svg.AppendFeatureCollection(geoJSON)
 
-	width, height, viewBoxHeight := 0.0, 0.0, 0.0
+	width, height := 0.0, 0.0
 	if geoJSON != nil {
-		width, height, viewBoxHeight = getWidthAndHeight(request, svg)
+		svg.AppendFeatureCollection(geoJSON)
+		width, height = getViewBoxDimensions(svg, request)
 	}
 
-	return &SVGRequest{request: request, geoJSON: geoJSON, svg: svg, width: width, height: height, viewBoxHeight: viewBoxHeight}
+	responsiveSize := request.MinWidth > 0 && request.MaxWidth > 0
+
+	svgRequest := &SVGRequest{
+		request:        request,
+		geoJSON:        geoJSON,
+		svg:            svg,
+		ViewBoxWidth:   width,
+		ViewBoxHeight:  height,
+		responsiveSize: responsiveSize,
+	}
+
+	if request.Choropleth != nil && len(request.Choropleth.Breaks) > 0 {
+		svgRequest.breaks, svgRequest.referencePos = getSortedBreakInfo(request)
+
+		svgRequest.VerticalLegendWidth, svgRequest.verticalKeyOffset = getVerticalLegendWidth(request, svgRequest.breaks)
+	}
+
+	return svgRequest
 }
 
 // RenderSVG generates an SVG map for the given request
@@ -80,29 +103,30 @@ func RenderSVG(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	width := svgRequest.width
-	height := svgRequest.height
-	vbHeight := svgRequest.viewBoxHeight
+	vbWidth := svgRequest.ViewBoxWidth
+	vbHeight := svgRequest.ViewBoxHeight
 
-	idPrefix := request.Filename + "-"
-	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, idPrefix)
+	id := idPrefix(request)
+	setFeatureIDs(geoJSON.Features, request.Geography.IDProperty, id+ "-")
 	setClassProperty(geoJSON.Features, RegionClassName)
-	setChoroplethColoursAndTitles(geoJSON.Features, request, idPrefix)
+	setChoroplethColoursAndTitles(geoJSON.Features, request)
 
 	converter := pngConverter
 	if !request.IncludeFallbackPng {
 		converter = nil
 	}
 
-	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, request.Filename), "\n", "", -1)
+	missingDataPattern := strings.Replace(fmt.Sprintf(MissingDataPattern, id), "\n", "", -1)
 
-	return svgRequest.svg.DrawWithProjection(width, height, g2s.MercatorProjection,
+	return svgRequest.svg.DrawWithProjection(vbWidth, vbHeight, g2s.MercatorProjection,
 		g2s.UseProperties([]string{"style", "class"}),
 		g2s.WithTitles(request.Geography.NameProperty),
 		g2s.WithAttribute("id", mapID(request)+"-svg"),
-		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", width, vbHeight)),
+		g2s.WithAttribute("viewBox", fmt.Sprintf("0 0 %.f %.f", vbWidth, vbHeight)),
 		g2s.WithPNGFallback(converter),
-		g2s.WithPattern(missingDataPattern))
+		g2s.WithPattern(missingDataPattern),
+		g2s.WithResponsiveSize(svgRequest.responsiveSize),
+	)
 }
 
 // getGeoJSON performs a sanity check for missing properties, then converts the topojson to geojson
@@ -118,33 +142,30 @@ func getGeoJSON(request *models.RenderRequest) *geojson.FeatureCollection {
 	return request.Geography.Topojson.ToGeoJSON()
 }
 
-// getWidthAndHeight extracts width and height from the request,
-// defaulting the width if missing and determining the height proportionally to the width if missing
-// note that this means that the request should only specify height if it has specified width, otherwise the dimensions will be wrong.
-// The third response argument is the height that should be used for the viewBox - this may be different to the height specified in the request.
-func getWidthAndHeight(request *models.RenderRequest, svg *g2s.SVG) (float64, float64, float64) {
-	width := request.Width
-	if width <= 0 {
+// getViewBoxDimensions assigns the viewbox a fixed width (400) and calculates the height relative to this,
+// returning (width, height)
+func getViewBoxDimensions(svg *g2s.SVG, request *models.RenderRequest) (float64, float64) {
+	width := request.DefaultWidth
+	if width <= 0.0 { // average the min and max width
+		width = (request.MinWidth + request.MaxWidth) / 2
+	}
+	if width <= 0.0 { // use a default width of 400
 		width = 400.0
 	}
-	viewBoxHeight := svg.GetHeightForWidth(width, g2s.MercatorProjection)
-	height := request.Height
-	if height <= 0 {
-		height = viewBoxHeight
-	}
-	return width, height, viewBoxHeight
+	height := svg.GetHeightForWidth(width, g2s.MercatorProjection)
+	return width, height
 }
 
 // setFeatureIDs looks in each Feature for a property with the given idProperty, using it as the feature id.
-func setFeatureIDs(features []*geojson.Feature, idProperty string, idPrefix string) {
+func setFeatureIDs(features []*geojson.Feature, idProperty string, prefix string) {
 	for _, feature := range features {
 		id, isString := feature.Properties[idProperty].(string)
 		if isString && len(id) > 0 {
-			feature.ID = idPrefix + id
+			feature.ID = prefix + id
 		} else {
 			id, isString := feature.ID.(string)
 			if isString && len(id) > 0 {
-				feature.ID = idPrefix + id
+				feature.ID = prefix + id
 			}
 		}
 	}
@@ -169,13 +190,14 @@ func appendProperty(feature *geojson.Feature, propertyName string, value string)
 
 // setChoroplethColoursAndTitles creates a mapping from the id of a data row to its value and colour,
 // then iterates through the features assigning a title and style for the colour.
-func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.RenderRequest, idPrefix string) {
+func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.RenderRequest) {
 	choropleth := request.Choropleth
 	if choropleth == nil || request.Data == nil {
 		return
 	}
-	dataMap := mapDataToColour(request.Data, choropleth, idPrefix)
-	missingValueStyle := "fill: url(#" + request.Filename + "-nodata);"
+	id := idPrefix(request)
+	dataMap := mapDataToColour(request.Data, choropleth, id+ "-")
+	missingValueStyle := "fill: url(#" + id + "-nodata);"
 	for _, feature := range features {
 		style := missingValueStyle
 		title, ok := feature.Properties[request.Geography.NameProperty]
@@ -194,12 +216,12 @@ func setChoroplethColoursAndTitles(features []*geojson.Feature, request *models.
 }
 
 // mapDataToColour creates a map of DataRow.ID=valueAndColour
-func mapDataToColour(data []*models.DataRow, choropleth *models.Choropleth, idPrefix string) map[interface{}]valueAndColour {
+func mapDataToColour(data []*models.DataRow, choropleth *models.Choropleth, prefix string) map[interface{}]valueAndColour {
 	breaks := sortBreaks(choropleth.Breaks, false)
 
 	dataMap := make(map[interface{}]valueAndColour)
 	for _, row := range data {
-		dataMap[idPrefix+row.ID] = valueAndColour{value: row.Value, colour: getColour(row.Value, breaks)}
+		dataMap[prefix+row.ID] = valueAndColour{value: row.Value, colour: getColour(row.Value, breaks)}
 	}
 	return dataMap
 }
@@ -235,19 +257,30 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	svgWidth := svgRequest.width
 
-	keyInfo := getHorizontalKeyInfo(svgWidth, request)
+	keyInfo := getHorizontalKeyInfo(svgRequest.ViewBoxWidth, svgRequest)
+	id := idPrefix(request)
+	missingId := id + "-horizontal"
 
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal" class="map_key_horizontal" width="%.f" height="90" viewBox="0 0 %.f 90"`, request.Filename, svgWidth, svgWidth)
 
-	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, request.Filename)
-	writeHorizontalKeyTitle(request, svgWidth, content)
-	fmt.Fprintf(content, `<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, request.Filename, keyInfo.keyX)
+	fmt.Fprintf(content, "<defs>")
+	fmt.Fprintf(content, MissingDataPattern, missingId)
+	fmt.Fprintf(content, "</defs>")
+
+	keyClass := getKeyClass(request, "horizontal")
+	vbHeight := 90.0
+	svgAttributes := fmt.Sprintf(`id="%s-legend-horizontal-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, svgRequest.ViewBoxWidth, vbHeight)
+	if !svgRequest.responsiveSize {
+		svgAttributes += fmt.Sprintf(` width="%.f" height="%.f"`, svgRequest.ViewBoxWidth, vbHeight)
+	}
+
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-container">`, id)
+	writeHorizontalKeyTitle(request, svgRequest.ViewBoxWidth, content)
+	fmt.Fprintf(content, `<g id="%s-legend-horizontal-key" transform="translate(%f, 20)">`, id, keyInfo.keyX)
 	left := 0.0
-	breaks := keyInfo.breaks
+	breaks := svgRequest.breaks
 	for i := 0; i < len(breaks); i++ {
 		width := breaks[i].RelativeSize * keyInfo.keyWidth
 		fmt.Fprintf(content, `<rect class="keyColour" height="8" width="%f" x="%f" style="stroke-width: 0.5; stroke: black; fill: %s;">`, width, left, breaks[i].Colour)
@@ -257,22 +290,21 @@ func RenderHorizontalKey(svgRequest *SVGRequest) string {
 	}
 	writeHorizontalKeyTick(ticks, left, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeHorizontalKeyRefTick(ticks, keyInfo, svgWidth)
+		writeHorizontalKeyRefTick(ticks, keyInfo, svgRequest)
 	}
 	fmt.Fprint(content, ticks.String())
 
-	writeKeyMissingPattern(content, request.Filename, 0.0, 55.0)
+	writeKeyMissingPattern(content, missingId, 0.0, 55.0, request.FontSize)
 
 	content.WriteString(`</g></g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", svgAttributes, content)
 	}
-	return pngConverter.IncludeFallbackImage(svgAttributes, content.String())
+	return pngConverter.IncludeFallbackImage(svgAttributes, content.String(), svgRequest.ViewBoxWidth, vbHeight)
 }
 
 // RenderVerticalKey creates an SVG containing a vertically-oriented key for the choropleth
-// TODO decide on a max width for the key (e.g. no wider than the map?), ensure that the text fits within the svg.
 func RenderVerticalKey(svgRequest *SVGRequest) string {
 
 	geoJSON := svgRequest.geoJSON
@@ -280,19 +312,33 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 		return ""
 	}
 	request := svgRequest.request
-	svgHeight := svgRequest.height
+	svgHeight := svgRequest.ViewBoxHeight
 
-	breaks, referencePos := getSortedBreakInfo(request)
+	breaks := svgRequest.breaks
 
 	keyHeight := svgHeight * 0.8
-	keyWidth := getVerticalKeyWidth(request, breaks)
+	keyWidth, offset := svgRequest.VerticalLegendWidth, svgRequest.verticalKeyOffset
+
+	id := idPrefix(request)
+
 	content := bytes.NewBufferString("")
 	ticks := bytes.NewBufferString("")
-	attributes := fmt.Sprintf(`id="%s-legend-vertical" class="map_key_vertical" height="%.f" width="%.f" viewBox="0 0 %.f %.f"`, request.Filename, svgHeight, keyWidth, keyWidth, svgHeight)
 
-	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, request.Filename)
-	fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText">%s %s</text>`, keyWidth/2, svgHeight*0.05, request.Choropleth.ValuePrefix, request.Choropleth.ValueSuffix)
-	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, request.Filename, keyWidth/2, svgHeight*0.1)
+	missingId := id + "-vertical"
+
+	fmt.Fprintf(content, "<defs>")
+	fmt.Fprintf(content, MissingDataPattern, missingId)
+	fmt.Fprintf(content, "</defs>")
+
+	keyClass := getKeyClass(request, "vertical")
+	attributes := fmt.Sprintf(`id="%s-legend-vertical-svg" class="%s" viewBox="0 0 %.f %.f"`, id, keyClass, keyWidth, svgHeight)
+	if !svgRequest.responsiveSize {
+		attributes += fmt.Sprintf(` width="%.f" height="%.f"`, keyWidth, svgHeight)
+	}
+
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-container">`, id)
+	writeVerticalLegendTitle(content, keyWidth, svgHeight, request)
+	fmt.Fprintf(content, `<g id="%s-legend-vertical-key" transform="translate(%f, %f)">`, id, (keyWidth+offset)/2, svgHeight*0.1)
 	position := 0.0
 	for i := 0; i < len(breaks); i++ {
 		height := breaks[i].RelativeSize * keyHeight
@@ -304,32 +350,64 @@ func RenderVerticalKey(svgRequest *SVGRequest) string {
 	}
 	writeVerticalKeyTick(ticks, keyHeight-position, breaks[len(breaks)-1].UpperBound)
 	if len(request.Choropleth.ReferenceValueText) > 0 {
-		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*referencePos), request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue)
+		writeVerticalKeyRefTick(ticks, keyHeight-(keyHeight*svgRequest.referencePos), request)
 	}
 	fmt.Fprint(content, ticks.String())
 	content.WriteString(`</g>`)
 
 	xPos := (keyWidth - float64(htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize)+12)) / 2
-	writeKeyMissingPattern(content, request.Filename, xPos, svgHeight*0.95)
+	writeKeyMissingPattern(content, missingId, xPos, svgHeight*0.95, request.FontSize)
 
 	content.WriteString(`</g>`)
 
 	if pngConverter == nil || request.IncludeFallbackPng == false {
 		return fmt.Sprintf("<svg %s>%s</svg>", attributes, content)
 	}
-	return pngConverter.IncludeFallbackImage(attributes, content.String())
+	return pngConverter.IncludeFallbackImage(attributes, content.String(), keyWidth, svgHeight)
 }
 
-// getVerticalKeyWidth determines the approximate width required for the key
-func getVerticalKeyWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+func writeVerticalLegendTitle(content *bytes.Buffer, keyWidth float64, svgHeight float64, request *models.RenderRequest) (int, error) {
+	text := request.Choropleth.ValuePrefix + " " + request.Choropleth.ValueSuffix
+	textLen := htmlutil.GetApproximateTextWidth(text, request.FontSize)
+	return fmt.Fprintf(content, `<text x="%f" y="%f" dy=".5em" style="text-anchor: middle;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, keyWidth/2, svgHeight*0.05, textLen, text)
+}
+
+// getKeyClass returns the class of the map key - with an additional class if both keys are rendered.
+func getKeyClass(request *models.RenderRequest, keyType string) string {
+	keyClass := "map_key_" + keyType
+	if hasVerticalLegend(request) && hasHorizontalLegend(request) {
+		keyClass = keyClass + " " + keyClass + "_both"
+	}
+	return keyClass
+}
+
+// hasVerticalLegend returns true if the request includes a vertical legend
+func hasVerticalLegend(request *models.RenderRequest) bool {
+	return request.Choropleth != nil &&
+		(request.Choropleth.VerticalLegendPosition == models.LegendPositionBefore ||
+			request.Choropleth.VerticalLegendPosition == models.LegendPositionAfter)
+}
+
+// hasHorizontalLegend returns true if the request includes a horizontal legend
+func hasHorizontalLegend(request *models.RenderRequest) bool {
+	return request.Choropleth != nil &&
+		(request.Choropleth.HorizontalLegendPosition == models.LegendPositionBefore ||
+			request.Choropleth.HorizontalLegendPosition == models.LegendPositionAfter)
+}
+
+// getVerticalLegendWidth determines the approximate width required for the legend
+// it also returns an offset for the position of the key. I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+func getVerticalLegendWidth(request *models.RenderRequest, breaks []*breakInfo) (float64, float64) {
 	missingWidth := htmlutil.GetApproximateTextWidth(MissingDataText, request.FontSize) + 12
-	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, 0)
+	titleWidth := htmlutil.GetApproximateTextWidth(request.Choropleth.ValuePrefix+" "+request.Choropleth.ValueSuffix, request.FontSize)
 	maxWidth := math.Max(float64(missingWidth), float64(titleWidth))
-	return math.Max(maxWidth, getVerticalTickTextWidth(request, breaks)) + 10
+	keyWidth, offset := getVerticalTickTextWidth(request, breaks)
+	return math.Max(maxWidth, keyWidth) + 10, offset
 }
 
-// getVerticalTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 36 pixels for the colour bar
-func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) float64 {
+// getVerticalTickTextWidth calculates the approximate total width of the ticks on both sides of the key, allowing 38 pixels for the colour bar
+// it also returns an offset for the position of the key. I.e. the middle of the key should be positioned in the middle of the legend, plus the offset.
+func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo) (float64, float64) {
 	maxTick := 0.0
 	for _, b := range breaks {
 		lbound := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", b.LowerBound), request.FontSize)
@@ -341,9 +419,10 @@ func getVerticalTickTextWidth(request *models.RenderRequest, breaks []*breakInfo
 			maxTick = ubound
 		}
 	}
-	refTick := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, 0)
-	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), 0)
-	return maxTick + math.Max(refTick, refValue) + 36.0
+	refTick := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)
+	refValue := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", request.Choropleth.ReferenceValue), request.FontSize)
+	refWidth := math.Max(refTick, refValue)
+	return maxTick + refWidth + 38.0, maxTick - refWidth
 }
 
 // writeHorizontalKeyTitle write the title above the key for a horizontal legend, ensuring that the text fits within the svg
@@ -359,7 +438,7 @@ func writeHorizontalKeyTitle(request *models.RenderRequest, svgWidth float64, co
 
 // writeHorizontalKeyTick draws a vertical line (the tick) at the given position, labelling it with the given value
 func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(%f, 0)">`, xPos)
 	w.WriteString(`<line x2="0" y2="15" style="stroke-width: 1; stroke: Black;"></line>`)
 	fmt.Fprintf(w, `<text x="0" y="18" dy=".74em" style="text-anchor: middle;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
@@ -367,16 +446,17 @@ func writeHorizontalKeyTick(w *bytes.Buffer, xPos float64, value float64) {
 
 // writeVerticalKeyTick draws a horizontal line (the tick) at the given position, labelling it with the given value
 func writeVerticalKeyTick(w *bytes.Buffer, yPos float64, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(0, %f)">`, yPos)
 	w.WriteString(`<line x1="8" x2="-15" style="stroke-width: 1; stroke: Black;"></line>`)
 	fmt.Fprintf(w, `<text x="-18" y="0" dy="0.32em" style="text-anchor: end;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
 }
 
 // writeHorizontalKeyRefTick draws a vertical line at the correct position for the reference value, labelling it with the reference value and reference text.
-func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgWidth float64) {
-	xPos := keyInfo.keyWidth * keyInfo.referencePos
-	fmt.Fprintf(w, `<g class="tick" transform="translate(%f, 0)">`, xPos)
+func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgRequest *SVGRequest) {
+	xPos := keyInfo.keyWidth * svgRequest.referencePos
+	svgWidth := svgRequest.ViewBoxWidth
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(%f, 0)">`, xPos)
 	w.WriteString(`<line x2="0" y1="8" y2="45" style="stroke-width: 1; stroke: DimGrey;"></line>`)
 	textAttr := ""
 	if keyInfo.referenceTextLeftLen > xPos+keyInfo.keyX { // adjust the text length so it will fit
@@ -392,19 +472,21 @@ func writeHorizontalKeyRefTick(w *bytes.Buffer, keyInfo *horizontalKeyInfo, svgW
 }
 
 // writeVerticalKeyRefTick draws a horizontal line at the correct position for the reference value, labelling it with the reference value and reference text.
-func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, text string, value float64) {
-	fmt.Fprintf(w, `<g class="tick" transform="translate(0, %f)">`, yPos)
+func writeVerticalKeyRefTick(w *bytes.Buffer, yPos float64, request *models.RenderRequest) {
+	text, value := request.Choropleth.ReferenceValueText, request.Choropleth.ReferenceValue
+	textLen := htmlutil.GetApproximateTextWidth(text, request.FontSize)
+	fmt.Fprintf(w, `<g class="map__tick" transform="translate(0, %f)">`, yPos)
 	w.WriteString(`<line x2="45" x1="8" style="stroke-width: 1; stroke: DimGrey;"></line>`)
-	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, text)
+	fmt.Fprintf(w, `<text x="18" dy="-.32em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, textLen, text)
 	fmt.Fprintf(w, `<text x="18" dy="1em" style="text-anchor: start; fill: DimGrey;" class="keyText">%g</text>`, value)
 	w.WriteString(`</g>`)
 }
 
 // writeKeyMissingPattern draws a square filled with the missing pattern at the given position, labelling it with MissingDataText
-func writeKeyMissingPattern(w *bytes.Buffer, filename string, xPos float64, yPos float64) {
+func writeKeyMissingPattern(w *bytes.Buffer, id string, xPos float64, yPos float64, fontSize int) {
 	fmt.Fprintf(w, `<g class="missingPattern" transform="translate(%f, %f)">`, xPos, yPos)
-	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#%s-nodata);"></rect>`, filename)
-	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText">%s</text>`, MissingDataText)
+	fmt.Fprintf(w, `<rect class="keyColour" height="8" width="8" style="stroke-width: 0.8; stroke: black; fill: url(#%s-nodata);"></rect>`, id)
+	fmt.Fprintf(w, `<text x="12" dy=".55em" style="text-anchor: start; fill: DimGrey;" class="keyText" textLength="%.f" lengthAdjust="spacingAndGlyphs">%s</text>`, htmlutil.GetApproximateTextWidth(MissingDataText, fontSize), MissingDataText)
 	w.WriteString(`</g>`)
 }
 
@@ -416,11 +498,12 @@ type breakInfo struct {
 	Colour       string
 }
 
-// getRelativeBreakSizes return information about the breaks - lowerBound, upperBound and relative size
+// getSortedBreakInfo returns information about the breaks - lowerBound, upperBound and relative size
 // where the lowerBound of the first break is the lowest of the LowerBound and the lowest value in data
 // and the upperBound of the last break is the maximum value in the data
 // also returns the relative position of the reference value
 func getSortedBreakInfo(request *models.RenderRequest) ([]*breakInfo, float64) {
+
 	data := make([]*models.DataRow, len(request.Data))
 	copy(data, request.Data)
 	sort.Slice(data, func(i, j int) bool { return data[i].Value < data[j].Value })
@@ -449,8 +532,6 @@ func getSortedBreakInfo(request *models.RenderRequest) ([]*breakInfo, float64) {
 
 // horizontalKeyInfo contains break info, the width of the key, the x position of the key, and reference tick values
 type horizontalKeyInfo struct {
-	breaks                []*breakInfo
-	referencePos          float64
 	referenceTextLeft     string
 	referenceTextLeftLen  float64
 	referenceTextRight    string
@@ -461,32 +542,33 @@ type horizontalKeyInfo struct {
 
 // getHorizontalKeyInfo returns the width of the key, the x position of the key, the breaks within the key, and reference tick values
 // (making sure that the longer of the reference value and text is given the most space)
-func getHorizontalKeyInfo(svgWidth float64, request *models.RenderRequest) *horizontalKeyInfo {
+func getHorizontalKeyInfo(svgWidth float64, svgRequest *SVGRequest) *horizontalKeyInfo {
+	request := svgRequest.request
 	refInfo := getHorizontalRefTextInfo(request)
 	info := horizontalKeyInfo{}
-	info.breaks, info.referencePos = getSortedBreakInfo(request)
 
 	// assume a default width of 90% of svg
 	info.keyWidth = svgWidth * 0.9
 	info.keyX = (svgWidth - info.keyWidth) / 2
 
 	// half of the upper and lower bound text will sit outside the key
-	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[0].LowerBound), request.FontSize) / 2
-	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", info.breaks[len(info.breaks)-1].UpperBound), request.FontSize) / 2
+	breaks := svgRequest.breaks
+	left := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[0].LowerBound), request.FontSize) / 2
+	right := htmlutil.GetApproximateTextWidth(fmt.Sprintf("%g", breaks[len(breaks)-1].UpperBound), request.FontSize) / 2
 
 	// the longer bit of reference text should sit on the side of the tick with the most space
 	info.referenceTextLeft = refInfo.referenceTextLong
 	info.referenceTextLeftLen = refInfo.referenceTextLongLen
 	info.referenceTextRight = refInfo.referenceTextShort
 	info.referenceTextRightLen = refInfo.referenceTextShortLen
-	if info.referencePos < 0.5 { // the reference tick is less than halfway - switch the text
+	if svgRequest.referencePos < 0.5 { // the reference tick is less than halfway - switch the text
 		info.referenceTextRight = refInfo.referenceTextLong
 		info.referenceTextRightLen = refInfo.referenceTextLongLen
 		info.referenceTextLeft = refInfo.referenceTextShort
 		info.referenceTextLeftLen = refInfo.referenceTextShortLen
 	}
 	// now see if reference text is long enough to go beyond the bounds of the key
-	refPos := info.keyWidth * info.referencePos // the actual pixel position of the reference tick within the key
+	refPos := info.keyWidth * svgRequest.referencePos // the actual pixel position of the reference tick within the key
 	if refPos-info.referenceTextLeftLen < 0.0-left {
 		left = math.Abs(refPos - info.referenceTextLeftLen)
 	}
@@ -510,7 +592,7 @@ type horizontalRefTextInfo struct {
 	referenceTextLongLen  float64
 }
 
-// getHorizontalRefTextInfo calculates the approximate width of the reference value and text, assigning them to short and long values.
+// getHorizontalRefTextInfo calculates the approximate width of the reference value and text, dividing them into short and long values.
 func getHorizontalRefTextInfo(request *models.RenderRequest) *horizontalRefTextInfo {
 	info := horizontalRefTextInfo{}
 	refTextLen := htmlutil.GetApproximateTextWidth(request.Choropleth.ReferenceValueText, request.FontSize)

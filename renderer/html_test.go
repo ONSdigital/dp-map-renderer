@@ -15,6 +15,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"regexp"
 )
 
 func TestRenderHTMLWithSVG(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 		container, _ := invokeRenderHTMLWithSVG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -47,7 +48,63 @@ func TestRenderHTMLWithSVG(t *testing.T) {
 	})
 }
 
-func TestRenderHTMLWithPNG(t *testing.T) {
+func TestRenderHTMLWithPNGWithVerticalLegend(t *testing.T) {
+
+	Convey("Successfully render a png image of the map with no horizontal legend", t, func() {
+
+		renderer.UsePNGConverter(pngConverter)
+
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+
+		container, html := invokeRenderHTMLWithPNG(renderRequest)
+
+		fmt.Println(html)
+		So(GetAttribute(container, "class"), ShouldEqual, "figure")
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
+
+		So(FindNode(container, atom.Svg), ShouldBeNil)
+		So(FindNode(container, atom.Style), ShouldBeNil)
+		So(FindNode(container, atom.Script), ShouldBeNil)
+
+		So(len(FindAllNodes(container, atom.Img)), ShouldEqual, 2)
+
+		hDiv := findNodeWithClass(container, atom.Div, "map_key__horizontal")
+		So(FindNode(hDiv, atom.Img), ShouldBeNil)
+
+		mDiv := findNodeWithClass(container, atom.Div, "map")
+		img := FindNode(mDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		vDiv := findNodeWithClass(container, atom.Div, "map_key__vertical")
+		img = FindNode(vDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		// the footer - source
+		footer := FindNode(container, atom.Footer)
+		So(footer, ShouldNotBeNil)
+		// footnotes
+		notes := FindNodeWithAttributes(footer, atom.P, map[string]string{"class": "figure__notes"})
+		So(notes, ShouldNotBeNil)
+		So(notes.FirstChild.Data, ShouldResemble, "Notes")
+		footnotes := FindNodes(footer, atom.Li)
+		So(len(footnotes), ShouldEqual, len(renderRequest.Footnotes))
+
+	})
+}
+
+func TestRenderHTMLWithPNGWithHorizontalLegend(t *testing.T) {
 
 	Convey("Successfully render a png image of the map", t, func() {
 
@@ -58,17 +115,29 @@ func TestRenderHTMLWithPNG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
 
 		container, html := invokeRenderHTMLWithPNG(renderRequest)
 
 		fmt.Println(html)
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
-		svg := FindNode(container, atom.Svg)
-		So(svg, ShouldBeNil)
+		So(len(FindAllNodes(container, atom.Img)), ShouldEqual, 2)
 
-		img := FindNode(container, atom.Img)
+		So(FindNode(container, atom.Svg), ShouldBeNil)
+		So(FindNode(container, atom.Style), ShouldBeNil)
+		So(FindNode(container, atom.Script), ShouldBeNil)
+
+		hDiv := findNodeWithClass(container, atom.Div, "map_key__horizontal")
+		img := FindNode(hDiv, atom.Img)
+		So(img, ShouldNotBeNil)
+		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
+		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
+
+		mDiv := findNodeWithClass(container, atom.Div, "map")
+		img = FindNode(mDiv, atom.Img)
 		So(img, ShouldNotBeNil)
 		So(len(GetAttribute(img, "width")), ShouldBeGreaterThan, 0)
 		So(len(GetAttribute(img, "height")), ShouldBeGreaterThan, 0)
@@ -102,7 +171,7 @@ func TestRenderHTMLWithPNG_ConverterNotAvailable(t *testing.T) {
 		container, _ := invokeRenderHTMLWithPNG(renderRequest)
 
 		So(GetAttribute(container, "class"), ShouldEqual, "figure")
-		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename)
+		So(GetAttribute(container, "id"), ShouldEqual, "map-"+renderRequest.Filename+"-figure")
 
 		svg := FindNode(container, atom.Svg)
 		So(svg, ShouldNotBeNil)
@@ -232,6 +301,102 @@ func TestRenderHTML_BothLegends(t *testing.T) {
 
 	})
 }
+
+func TestRenderCssForVerticalLegend(t *testing.T) {
+
+	Convey("Should render a style block when no min/max specified but vertical legend included", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 0
+		renderRequest.MaxWidth = 0
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `abcd1234-legend-vertical`)
+
+	})
+}
+
+func TestRenderResponsiveCss(t *testing.T) {
+
+	Convey("Should render a style block to enable the map to be responsive", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `min-width: 300px;`)
+		So(style, ShouldContainSubstring, `max-width: 500px;`)
+		So(style, ShouldNotContainSubstring, `@media (min-width: 523px) {`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
+func TestRenderCss(t *testing.T) {
+
+	Convey("Should render a style block with a fixed width", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 0
+		renderRequest.MaxWidth = 0
+		renderRequest.DefaultWidth = 450
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "none"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">.*</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `width: 450px;`)
+		So(style, ShouldNotContainSubstring, `@media`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
+func TestRenderCssWithBothLegends(t *testing.T) {
+
+	Convey("Should render a style block including switching between horizontal and vertical legends", t, func() {
+		reader := bytes.NewReader(testdata.LoadExampleRequest(t))
+		renderRequest, err := models.CreateRenderRequest(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderRequest.MinWidth = 300
+		renderRequest.MaxWidth = 500
+		renderRequest.Choropleth.HorizontalLegendPosition = "before"
+		renderRequest.Choropleth.VerticalLegendPosition = "after"
+
+		_, result := invokeRenderHTMLWithSVG(renderRequest)
+
+		style := regexp.MustCompile(`(?s)<style type="text/css">(.*)</style>`).FindString(result)
+		So(style, ShouldNotBeEmpty)
+		So(style, ShouldContainSubstring, `@media (min-width: 523px) {`)
+		So(style, ShouldContainSubstring, `@media (max-width: 522px) {`)
+		So(style, ShouldNotContainSubstring, `EXTRA`)
+		So(style, ShouldNotContainSubstring, `MISSING`)
+	})
+}
+
 
 func TestRenderHTMLWithNoSVG(t *testing.T) {
 
@@ -394,6 +559,14 @@ func invokeRenderHTMLWithPNG(renderRequest *models.RenderRequest) (*html.Node, s
 	node := nodes[0]
 	So(node.DataAtom, ShouldEqual, atom.Figure)
 	return node, string(response)
+}
+
+func findNodeWithClass(parent *html.Node, a atom.Atom, class string) *html.Node {
+	nodes := findNodesWithClass(parent, a, class)
+	if len(nodes) == 0 {
+		return nil
+	}
+	return nodes[0]
 }
 
 func findNodesWithClass(parent *html.Node, a atom.Atom, class string) []*html.Node {
