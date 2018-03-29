@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM onsdigital/dp-concourse-tools-ubuntu
 
 RUN apt-get update -y && \
     apt-get install -y librsvg2-bin
