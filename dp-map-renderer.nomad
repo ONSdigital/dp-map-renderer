@@ -16,7 +16,6 @@ job "dp-map-renderer" {
 
     constraint {
       attribute = "${node.class}"
-      operator  = "regexp"
       value     = "web"
     }
 
@@ -86,7 +85,6 @@ job "dp-map-renderer" {
 
     constraint {
       attribute = "${node.class}"
-      operator  = "regexp"
       value     = "publishing"
     }
 
